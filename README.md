@@ -8,6 +8,8 @@ The project builds an explainable machine-learning pipeline for predicting non-r
 
 - `reports/final_report/main.pdf` - final thesis report.
 - `reports/final_report/` - LaTeX source for the final report.
+- `reports/research_paper/main.pdf` - IEEE-style research paper draft based on the thesis.
+- `reports/research_paper/` - LaTeX source for the research paper draft.
 - `dashboard/app.py` - Streamlit dashboard for rolling prediction replay and model explanation.
 - `scripts/` - reproducible data preparation, EDA, grid construction, modeling, explainability, calibration, and dashboard-preparation scripts.
 - `reports/modeling/` - aggregate model result tables and report-ready figures.
@@ -19,6 +21,10 @@ The project builds an explainable machine-learning pipeline for predicting non-r
 - `references.bib` - bibliography used by the LaTeX report.
 
 The raw traffic incident CSV and large generated datasets are not included because of size and submission-safety reasons.
+
+Public repository:
+
+[https://github.com/sparshagg/thesis](https://github.com/sparshagg/thesis)
 
 ## Data Source
 
@@ -122,6 +128,8 @@ latexmk -xelatex main.tex
 ```
 
 The compiled submission PDF is included as `reports/final_report/main.pdf`.
+
+The conference-style research paper draft is included as `reports/research_paper/main.pdf`. It is also attached in Appendix C of the final thesis report.
 
 ## Limitations
 

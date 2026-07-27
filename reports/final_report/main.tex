@@ -33,9 +33,10 @@
 \usepackage{tabularx}
 \usepackage{xcolor}
 \usepackage[hidelinks]{hyperref}
+\usepackage{pdfpages}
 \usepackage{cite}
 
-\graphicspath{{../../thesis_report/figures/}{../eda/figures/}{../modeling/figures/}{../dashboard/screenshots/}}
+\graphicspath{{assets/}{../eda/figures/}{../modeling/figures/}{../dashboard/screenshots/}}
 \setcounter{tocdepth}{2}
 
 \newcolumntype{Y}{>{\raggedright\arraybackslash}X}
@@ -51,6 +52,7 @@
 \newcommand{\outgoingassociatedean}{Dr.\ A.\ Somasundaram}
 \newcommand{\incomingassociatedean}{Dr.\ Tamizharasan Periyasamy}
 \newcommand{\incominghod}{Dr.\ Pranav M.\ Pawar}
+\newcommand{\publicrepo}{\url{https://github.com/sparshagg/thesis}}
 \renewcommand{\bibname}{References}
 
 \begin{document}
@@ -71,7 +73,7 @@
     {\large \supervisordesignation}\\[0.1cm]
     {\large \supervisorsecondarydesignation}\\[1cm]
     \vfill
-    \IfFileExists{../../thesis_report/figures/university_logo.png}{\includegraphics[width=0.24\textwidth]{../../thesis_report/figures/university_logo.png}\\[0.6cm]}{}
+    \IfFileExists{assets/university_logo.png}{\includegraphics[width=0.24\textwidth]{assets/university_logo.png}\\[0.6cm]}{}
     {\large ACADEMIC RESEARCH DIVISION}\\[0.25cm]
     {\large BIRLA INSTITUTE OF TECHNOLOGY AND SCIENCE, PILANI}\\[0.2cm]
     {\large DUBAI CAMPUS, DUBAI, U.A.E.}\\[0.7cm]
@@ -92,6 +94,7 @@
     \textbf{Course Title} & : Thesis \\
     \textbf{Course Number} & : BITS F423T \\
     \textbf{Report Type} & : Final thesis report \\
+    \textbf{Project Repository} & : \publicrepo \\
     \textbf{Date of Submission} & : 31 July 2026 \\
 \end{tabular}
 \vspace{1cm}
