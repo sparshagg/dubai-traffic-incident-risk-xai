@@ -10,6 +10,7 @@ The project builds an explainable machine-learning pipeline for predicting non-r
 - `reports/final_report/` - LaTeX source for the final report.
 - `reports/research_paper/main.pdf` - IEEE-style research paper draft based on the thesis.
 - `reports/research_paper/` - LaTeX source for the research paper draft.
+- `reports/submission/` - ready-to-submit PDFs with clear filenames, including the final report, Turnitin similarity report, and research paper draft.
 - `dashboard/app.py` - Streamlit dashboard for rolling prediction replay and model explanation.
 - `scripts/` - reproducible data preparation, EDA, grid construction, modeling, explainability, calibration, and dashboard-preparation scripts.
 - `reports/modeling/` - aggregate model result tables and report-ready figures.
@@ -130,6 +131,12 @@ latexmk -xelatex main.tex
 The compiled submission PDF is included as `reports/final_report/main.pdf`.
 
 The conference-style research paper draft is included as `reports/research_paper/main.pdf`. It is also attached in Appendix C of the final thesis report.
+
+For direct submission, use the clearly named PDFs in `reports/submission/`:
+
+- `Sparsh_Aggarwal_2022A7TS0279U_Final_Thesis_Report.pdf`
+- `Sparsh_Aggarwal_2022A7TS0279U_Turnitin_Similarity_Report.pdf`
+- `Sparsh_Aggarwal_2022A7TS0279U_Research_Paper_Draft.pdf`
 
 ## Limitations
 
