@@ -83,14 +83,15 @@ Table~\ref{tab:main_result} summarizes the main full-grid results. The historica
 \centering
 \caption{Inside-Dubai full-grid test results}
 \label{tab:main_result}
-\small
-\begin{tabular}{lrrrr}
+\scriptsize
+\setlength{\tabcolsep}{3pt}
+\begin{tabular}{L{0.37\columnwidth}rrrr}
 \toprule
 Model & ROC-AUC & PR-AUC & Recall & F1 \\
 \midrule
 Historical risk & 0.7990 & 0.0882 & 0.2679 & 0.1522 \\
-XGBoost without neighbor lags & 0.8067 & 0.0967 & 0.2630 & 0.1615 \\
-XGBoost with neighbor lags & 0.8120 & 0.0992 & 0.2720 & 0.1645 \\
+XGBoost, no neighbor lags & 0.8067 & 0.0967 & 0.2630 & 0.1615 \\
+XGBoost, neighbor lags & 0.8120 & 0.0992 & 0.2720 & 0.1645 \\
 \bottomrule
 \end{tabular}
 \end{table}
@@ -101,14 +102,15 @@ Table~\ref{tab:topk_result} shows the top-20 hotspot result. The selected XGBoos
 \centering
 \caption{Top-20 hotspot ranking result}
 \label{tab:topk_result}
-\small
-\begin{tabular}{lrrr}
+\scriptsize
+\setlength{\tabcolsep}{3pt}
+\begin{tabular}{L{0.37\columnwidth}rrr}
 \toprule
 Model & Pos. cells & Incidents & Incident recall \\
 \midrule
 Historical risk & 8,847 & 10,043 & 0.0871 \\
-XGBoost without neighbor lags & 9,049 & 10,281 & 0.0892 \\
-XGBoost with neighbor lags & 9,138 & 10,416 & 0.0903 \\
+XGBoost, no neighbor lags & 9,049 & 10,281 & 0.0892 \\
+XGBoost, neighbor lags & 9,138 & 10,416 & 0.0903 \\
 \bottomrule
 \end{tabular}
 \end{table}
