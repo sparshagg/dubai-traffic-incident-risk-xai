@@ -24,7 +24,7 @@ The raw traffic incident CSV and large generated datasets are not included becau
 
 Public repository:
 
-[https://github.com/sparshagg/thesis](https://github.com/sparshagg/thesis)
+[https://github.com/sparshagg/dubai-traffic-incident-risk-xai](https://github.com/sparshagg/dubai-traffic-incident-risk-xai)
 
 ## Data Source
 
