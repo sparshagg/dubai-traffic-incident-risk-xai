@@ -1,0 +1,9 @@
+metric,value
+Total raw records,720155
+Category/temporal EDA records,719729
+Rows excluded from category-level EDA,426
+Rows with valid normalized coordinates,717868
+Map-EDA usable rows,717615
+Invalid occurrence timestamps,0
+Occurrence start,2018-08-13 08:17:21
+Occurrence end,2026-06-01 14:09:45

@@ -1,0 +1,304 @@
+\chapter{Data and study design}
+
+This chapter describes the dataset, cleaning process, exploratory findings, and grid-time design used for modeling. The thesis uses the incident dataset as the primary data source. A separate annual accident and injury dataset was reviewed for background context, but it is not used for model training because it is aggregated annually and does not provide incident-level coordinates or time windows.
+
+The main data task is to convert a raw incident-point file into a supervised grid-time table. This conversion has several steps: checking the dataset source, interpreting the raw fields, translating Arabic categories, correcting coordinate order, filtering unusable rows, assigning incidents to H3 cells, aggregating into 3-hour windows, and building both positive and negative model rows. Each step affects the validity of the later model, so the report treats data preparation as part of the research contribution rather than a minor preprocessing detail.
+
+\section{Dataset provenance}
+
+The primary data source is an open Dubai Police traffic incident dataset published through Dubai's Data and Statistics portal. The dataset describes traffic incidents reported through Dubai Police's operations contact center and includes incident ID, incident category, occurrence time, and geographic coordinates. The frozen local snapshot is used throughout the thesis so that every result is reproducible from the same source file.
+
+\begin{table}[H]
+\centering
+\caption{Primary dataset provenance}
+\label{tab:dataset_provenance}
+\small
+\begin{tabularx}{\textwidth}{L{0.30\textwidth}Y}
+\toprule
+\textbf{Item} & \textbf{Value} \\
+\midrule
+Source portal & Dubai's Data and Statistics portal, \url{https://data.dubai/} \\
+Dataset page & \url{https://data.dubai/en/l/469979} \\
+Issuing entity & Dubai Police \\
+Dataset description & Real-time traffic incident records reported through Dubai Police's operations contact center. \\
+Access status & Open dataset available for public download from the portal. \\
+Local snapshot & \texttt{traffic\_incidents\_2026-06-01\_10-44-37\_1.csv} \\
+Raw rows & 720,155 \\
+Date range & 13 August 2018 08:17:21 to 1 June 2026 14:09:45 \\
+Raw columns & \texttt{acci\_id}, \texttt{acci\_time}, \texttt{acci\_name}, \texttt{acci\_x}, \texttt{acci\_y}, \texttt{load\_timestamp} \\
+Raw SHA-256 & \begin{tabular}[t]{@{}l@{}}{\scriptsize\ttfamily 686e7c7b7292dedcd4540c732cb7d46ed}\\{\scriptsize\ttfamily b6ef2525a94cb569ab12d95339c0694}\end{tabular} \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+The raw file is treated as read-only. All transformations are performed on derived files. This matters because coordinate correction and category translation change how the data is used, and the original source values must remain available for audit.
+
+\section{Raw field interpretation}
+
+The source file contains six fields. The field \texttt{acci\_time} is treated as the incident occurrence timestamp. The field \texttt{load\_timestamp} is treated as dataset-load metadata and is not used as occurrence time or clearance time. The incident category field \texttt{acci\_name} is in Arabic and combines incident type with severity or impact labels. The coordinate fields are kept in raw form and normalized into separate \texttt{longitude} and \texttt{latitude} fields after validation.
+
+\begin{table}[H]
+\centering
+\caption{Raw data dictionary and modeling use}
+\label{tab:raw_data_dictionary}
+\small
+\begin{tabularx}{\textwidth}{L{0.20\textwidth}L{0.24\textwidth}L{0.16\textwidth}Y}
+\toprule
+\textbf{Raw field} & \textbf{Meaning} & \textbf{Missing rows} & \textbf{Use after cleaning} \\
+\midrule
+\texttt{acci\_id} & Incident identifier & 0 & Used for row tracking and duplicate audit. \\
+\texttt{acci\_time} & Occurrence timestamp & 0 & Parsed into window start, hour block, day, month, year, and split index. \\
+\texttt{acci\_name} & Arabic incident category & 0 & Translated into incident type and severity fields. \\
+\texttt{acci\_x} & Raw coordinate value & 1 & Validated and converted to normalized longitude or latitude. \\
+\texttt{acci\_y} & Raw coordinate value & 0 & Validated and converted to normalized longitude or latitude. \\
+\texttt{load\_timestamp} & Dataset load timestamp & 0 & Retained as metadata; not used for prediction. \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+The duplicate incident-ID audit found 716,059 unique incident IDs in 720,155 rows, leaving 4,096 duplicate-ID rows. These rows are retained during the main point-level preparation because the modeling label is aggregated by cell and window. A duplicate identifier therefore does not automatically become a duplicate model row. The duplicate-ID count remains a data-quality note and should be reviewed with source-system context before any operational use.
+
+\section{Category translation and severity handling}
+
+The dataset contains 233 unique Arabic \texttt{acci\_name} values. Translating all 720,155 rows directly would repeat the same work many times. The implemented approach translates and parses only the unique category strings, reviews the mapping, and joins the mapping back to the full dataset. This keeps the translation table small enough to inspect and correct.
+
+The mapping produces an Arabic incident type, English incident type, incident type code, Arabic severity label, English severity label, severity code, severity weight, review status, EDA inclusion flag, and exclusion reason. Generic two-wheeler labels are kept as unspecified two-wheeler categories rather than being forced into bicycle or motorcycle. Cancelled event types and garbled source strings are excluded from category-level EDA. These excluded labels cover 426 raw rows, which is less than 0.1\% of the raw dataset.
+
+\begin{table}[H]
+\centering
+\caption{Examples from the category translation map}
+\label{tab:translation_examples_final}
+\scriptsize
+\setlength{\tabcolsep}{3pt}
+\begin{tabularx}{\textwidth}{L{0.34\textwidth}L{0.30\textwidth}L{0.14\textwidth}Y}
+\toprule
+\textbf{Source category meaning} & \textbf{English incident type} & \textbf{Severity} & \textbf{Use} \\
+\midrule
+Disabled vehicle on road - minor & Disabled vehicle on road & Minor & Included; highest-frequency category. \\
+Two-vehicle collision - minor & Two-vehicle collision & Minor & Included; hyphen spacing normalized. \\
+Vehicle breakdown on public road & Vehicle breakdown on public road & Unknown & Included; no explicit severity label. \\
+Hit barrier - minor & Hit barrier & Minor & Included. \\
+Hit and run - minor & Hit and run & Minor & Included. \\
+Hit motorcycle - severe & Hit motorcycle & Severe & Included with severity weight 3. \\
+Hit two-wheeler - minor & Hit two-wheeler, unspecified & Minor & Included; vehicle subtype kept conservative. \\
+Two-wheeler rollover - severe & Two-wheeler rollover, unspecified & Severe & Included; subtype not forced. \\
+Object in road - minor & Object in road & Minor & Included as operational disruption. \\
+Traffic congestion - minor & Traffic congestion & Minor & Included as reported incident category. \\
+Cancelled event type & Cancelled event type & Unknown & Excluded from category-level EDA. \\
+Unclear garbled source string & Unclear source category & Unknown & Excluded until source review. \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+Unknown severity is handled separately from minor severity. Earlier drafts used a weight of 1 for unknown severity, but the final version assigns unknown severity a weight of 0 in severity-weighted sums. This avoids treating unspecified severity as if it were confirmed minor severity. Unknown-severity incidents remain in the binary incident-occurrence label, incident counts, historical-risk rates, and lag incident counts because they are still real incident records.
+
+\begin{table}[H]
+\centering
+\caption{Severity coding used in the thesis}
+\label{tab:severity_coding}
+\small
+\begin{tabular}{lll}
+\toprule
+\textbf{Severity code} & \textbf{Meaning} & \textbf{Severity weight} \\
+\midrule
+Minor & Simple or minor incident label & 1 \\
+Moderate & Moderate incident label & 2 \\
+Severe & Serious or severe incident label & 3 \\
+Unknown & Not specified or not available & 0 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+This distinction affects only severity-weighted summaries and severity-weighted lag features. It does not remove unknown-severity records from the main incident occurrence prediction task.
+
+\section{Coordinate normalization}
+
+The coordinate audit found mixed coordinate order in the raw dataset. Some rows are already in longitude/latitude order. Most valid rows appear in latitude/longitude order and need to be swapped before mapping. The cleaned file preserves \texttt{acci\_x} and \texttt{acci\_y}, then adds normalized \texttt{longitude}, \texttt{latitude}, and \texttt{coordinate\_status} fields.
+
+\begin{table}[H]
+\centering
+\caption{Coordinate normalization rule}
+\label{tab:coordinate_normalization_rule_final}
+\small
+\begin{tabularx}{\textwidth}{L{0.36\textwidth}Y}
+\toprule
+\textbf{Condition} & \textbf{Action} \\
+\midrule
+\texttt{acci\_x} matches Dubai longitude range and \texttt{acci\_y} matches Dubai latitude range & Keep as provided and flag as as-provided longitude/latitude. \\
+\texttt{acci\_x} matches Dubai latitude range and \texttt{acci\_y} matches Dubai longitude range & Swap into normalized longitude and latitude; flag as swapped latitude/longitude. \\
+Missing coordinate & Leave normalized coordinates blank and flag as missing. \\
+Zero coordinate & Leave normalized coordinates blank and flag as zero coordinate. \\
+Out-of-bounds coordinate & Flag for exclusion from map and grid steps. \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+\begin{table}[H]
+\centering
+\caption{Coordinate validation and normalization summary}
+\label{tab:coordinate_normalization_summary}
+\small
+\begin{tabular}{lr}
+\toprule
+\textbf{Coordinate status} & \textbf{Rows} \\
+\midrule
+As provided longitude/latitude & 31,934 \\
+Swapped latitude/longitude corrected & 685,934 \\
+Zero coordinate & 2,191 \\
+Missing coordinate & 1 \\
+Out of bounds & 95 \\
+Valid after normalization & 717,868 \\
+Usable for map-based EDA after category filters & 717,615 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.82\textwidth]{coordinate_validation_summary.png}
+\caption{Coordinate validation summary after raw coordinate audit and normalization.}
+\label{fig:coordinate_validation_summary_final}
+\end{figure}
+
+This step is essential. Without coordinate normalization, most valid records would be assigned to incorrect locations, which would damage hotspot maps, H3 cell assignment, historical-risk priors, neighbor features, and dashboard maps.
+
+\section{Exploratory data analysis}
+
+After category exclusions, 719,729 rows remain for category and temporal EDA. The map-based EDA population is slightly smaller because it also requires valid normalized coordinates. The most common translated incident type is disabled vehicle on road, with 83,297 records. Thursday is the busiest day in the dataset with 110,569 incidents, and 14:00 is the busiest hour with 45,011 incidents.
+
+\begin{table}[H]
+\centering
+\caption{Selected EDA findings}
+\label{tab:selected_eda_findings}
+\small
+\begin{tabularx}{\textwidth}{L{0.36\textwidth}Y}
+\toprule
+\textbf{Metric} & \textbf{Finding} \\
+\midrule
+Raw records & 720,155 \\
+Category/temporal EDA records & 719,729 \\
+Map-usable rows & 717,615 \\
+Top incident type & Disabled vehicle on road, 83,297 records \\
+Top day of week & Thursday, 110,569 records \\
+Top hour of day & 14:00, 45,011 records \\
+Severity distribution & 82.22\% minor, 0.42\% moderate, 7.09\% severe, 10.27\% unknown \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.92\textwidth]{top_incident_types.png}
+\caption{Top translated incident types in the category/temporal EDA population.}
+\label{fig:top_incident_types_final}
+\end{figure}
+
+The top categories show that the dataset is broader than an injury-crash file. It includes disabled vehicles, collisions, double parking, hit barriers, hit poles, hit walls, road objects, congestion, and related operational events. This supports the thesis title's focus on non-recurrent incident risk rather than only crash severity.
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.78\textwidth]{severity_distribution.png}
+\caption{Parsed severity distribution in the category/temporal EDA population.}
+\label{fig:severity_distribution_final}
+\end{figure}
+
+The severity distribution is highly skewed toward minor incidents. There are 591,776 minor records, 3,004 moderate records, 51,050 severe records, and 73,899 unknown-severity records in the category/temporal EDA population. This supports keeping severity-aware analysis secondary. The main prediction target remains binary incident occurrence because the data contains many real incident reports without a fully specified severity label.
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.88\textwidth]{monthly_incidents.png}
+\caption{Monthly incident counts from August 2018 to June 2026.}
+\label{fig:monthly_incidents_final}
+\end{figure}
+
+The monthly trend shows that incident reporting volume is not constant across the full period. Some early and final months are partial because the snapshot starts in August 2018 and ends on 1 June 2026. This is why chronological evaluation is more appropriate than random splitting: later periods should be treated as later periods, not randomly mixed with early data.
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.78\textwidth]{day_of_week_incidents.png}
+\caption{Incident counts by day of week.}
+\label{fig:day_of_week_incidents_final}
+\end{figure}
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.78\textwidth]{hour_of_day_incidents.png}
+\caption{Incident counts by hour of day.}
+\label{fig:hour_of_day_incidents_final}
+\end{figure}
+
+The day-of-week and hour-of-day figures justify calendar features. They also make the task easier to explain: the model is not using a black-box timestamp. It uses explicit hour blocks, weekday patterns, weekend flags, month, and year, combined with historical and recent incident features.
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.86\textwidth]{dubai_hotspot_static.png}
+\caption{Static Dubai hotspot plot using corrected coordinates.}
+\label{fig:dubai_hotspot_static_final}
+\end{figure}
+
+The hotspot plot is a descriptive sanity check before modeling. It confirms that corrected coordinates place incidents in plausible Dubai locations. The final predictive maps use H3 cells and calibrated model scores rather than raw point-density bins.
+
+\FloatBarrier
+
+\section{H3 grid-time formulation}
+
+The map-usable incidents are assigned to H3 cells. The main setting is H3 resolution 8 with 3-hour time windows. H3 was selected because it gives stable cell identifiers, supports neighbor queries, and works directly from coordinates. A Dubai boundary GeoJSON defines the main inside-Dubai cell universe. Peripheral observed cells and outside-UAE flags are retained in audits, but the final model and report focus on inside-Dubai cells.
+
+H3 resolution 8 is a middle-scale choice. Coarser cells reduce sparsity but hide local spatial variation. Finer cells preserve more detail but make positives rarer and make the dashboard harder to read. The final sensitivity checks compare resolution 8 against coarser and finer settings before keeping it as the main thesis resolution.
+
+The binary prediction target is:
+
+\[
+y_{z,t} =
+\begin{cases}
+1, & \text{if at least one incident occurs in H3 cell } z \text{ during window } t,\\
+0, & \text{otherwise.}
+\end{cases}
+\]
+
+Positive rows are observed incident cell/windows. Negative rows are cell/windows where no incident is observed. The negative rows are not raw records in the source file; they are constructed from the grid/time universe. This is why the model table can contain millions of rows even though the raw incident file contains 720,155 incident records.
+
+\begin{table}[H]
+\centering
+\caption{Main H3 resolution-8, 3-hour grid-time dataset}
+\label{tab:h3_grid_time_dataset}
+\small
+\begin{tabularx}{\textwidth}{L{0.40\textwidth}Y}
+\toprule
+\textbf{Item} & \textbf{Value} \\
+\midrule
+Map-usable incident points & 717,615 \\
+Study-universe H3 cells before final inside-Dubai filtering & 3,584 \\
+Inside-Dubai H3 cells for final evaluation & 1,305 \\
+Positive grid-time rows & 678,174 \\
+Sampled model rows & 4,069,044 \\
+Negative sampling ratio & 5 negative rows per positive row \\
+Window count & 22,795 \\
+Window range & 13 August 2018 06:00 to 1 June 2026 12:00 \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+The first model sample contains all positive grid-time rows and five sampled negative rows for each positive row. Full-grid validation and test evaluation are then run on all inside-Dubai cells, not sampled negatives. This distinction is central to the results chapter.
+
+\section{Chronological split}
+
+The split is chronological. This is necessary because the model is meant to learn from earlier time windows and be evaluated on later time windows. A random row split would allow temporal patterns from later periods to appear in training and would make the result easier than the intended use case.
+
+\begin{table}[H]
+\centering
+\caption{Inside-Dubai full-grid chronological split}
+\label{tab:chronological_split}
+\small
+\begin{tabular}{lrrrr}
+\toprule
+\textbf{Split} & \textbf{Window indices} & \textbf{Candidate rows} & \textbf{Positive rows} & \textbf{Positive rate} \\
+\midrule
+Train & 0--15955 & 20,822,580 & 360,278 & 1.73\% \\
+Validation & 15956--19374 & 4,461,795 & 104,435 & 2.34\% \\
+Test & 19375--22794 & 4,463,100 & 108,224 & 2.42\% \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+The validation and test periods have higher positive rates than the training period. This split drift is reported rather than hidden because it affects threshold selection, precision, recall, and dashboard interpretation. The model must be judged on the later period, not on a randomly mixed subset that would be easier to predict.

@@ -1,0 +1,9 @@
+coordinate_status,count,share_of_all_rows
+as_provided_lon_lat,31934,4.43%
+swapped_lat_lon,685934,95.25%
+zero_coordinate,2191,0.30%
+missing_coordinate,1,0.00%
+invalid_coordinate,0,0.00%
+out_of_bounds,95,0.01%
+valid_after_normalization,717868,99.68%
+map_eda_usable_after_filters,717615,99.65%

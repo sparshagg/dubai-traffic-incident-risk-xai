@@ -1,0 +1,13 @@
+model,k,metric_name,windows_with_positives,total_positive_hotspots,positives_captured,weighted_recall,mean_window_recall
+Historical risk,5,sampled_candidate_hotspot_recall_at_5,3123,128743,11762,0.09136030696814584,0.10806522481316602
+Historical risk,10,sampled_candidate_hotspot_recall_at_10,3123,128743,22376,0.17380362427471785,0.20273285237161925
+Historical risk,20,sampled_candidate_hotspot_recall_at_20,3123,128743,41328,0.321011627816658,0.36553375480643957
+Logistic Regression,5,sampled_candidate_hotspot_recall_at_5,3123,128743,11827,0.09186518878696318,0.10862087482282139
+Logistic Regression,10,sampled_candidate_hotspot_recall_at_10,3123,128743,22519,0.17491436427611598,0.2045178989103515
+Logistic Regression,20,sampled_candidate_hotspot_recall_at_20,3123,128743,41500,0.32234762278337464,0.36695150977790864
+Random Forest,5,sampled_candidate_hotspot_recall_at_5,3123,128743,11860,0.09212151340267044,0.1090630590144508
+Random Forest,10,sampled_candidate_hotspot_recall_at_10,3123,128743,22547,0.1751318518288373,0.2046666053554551
+Random Forest,20,sampled_candidate_hotspot_recall_at_20,3123,128743,41679,0.3237379896382716,0.36869747514540097
+XGBoost,5,sampled_candidate_hotspot_recall_at_5,3123,128743,11887,0.09233123354279456,0.10966096831565558
+XGBoost,10,sampled_candidate_hotspot_recall_at_10,3123,128743,22552,0.17517068889182325,0.2043549772571328
+XGBoost,20,sampled_candidate_hotspot_recall_at_20,3123,128743,41704,0.3239321749532013,0.36892862098091

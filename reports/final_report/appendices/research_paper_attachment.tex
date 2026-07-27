@@ -1,0 +1,83 @@
+\chapter{Research paper draft attachment}
+
+\begin{center}
+\Large\textbf{Explainable grid-time traffic incident risk prediction in Dubai}\\[0.4cm]
+\normalsize Sparsh Aggarwal\\
+Department of Computer Science, BITS Pilani Dubai Campus
+\end{center}
+
+\section*{Abstract}
+
+This paper presents an explainable machine-learning framework for non-recurrent traffic incident risk prediction in Dubai. The work uses 720,155 Dubai Police incident records from 13 August 2018 to 1 June 2026. Arabic category labels are translated and parsed, coordinates are normalized, and incidents are mapped to H3 cells and 3-hour time windows. The prediction target is binary: whether a cell/window contains at least one incident. Models are trained chronologically and evaluated on a full inside-Dubai grid. The selected model is an XGBoost classifier with historical-risk, same-cell lag, and ring-1 neighboring-cell lag features. Neighboring-cell features improve full-grid PR-AUC from 0.0967 to 0.0992 and F1-score from 0.1615 to 0.1645 compared with the same XGBoost setup without neighbor features. Sigmoid calibration improves dashboard probability reliability, and SHAP explanations identify historical cell-hour risk, same-cell recent incidents, and neighboring recent incidents as the main model drivers. The final dashboard demonstrates rolling replay on an English dashboard map with zone-level SHAP reasons.
+
+\section*{Keywords}
+
+Traffic incident prediction; explainable AI; H3 grid; XGBoost; SHAP; Dubai; road safety.
+
+\section{Introduction}
+
+Non-recurrent traffic incidents such as crashes, vehicle breakdowns, obstructions, and stalled vehicles create irregular disruptions in urban road networks. Dubai has been studied in earlier road-safety work, including crash-cause and trend analysis \cite{aldah2010dubai,abdelfatah2015dubai}. Recent Dubai hotspot work shows that Dubai Police records can support spatial and temporal collision analysis \cite{alsaleh2026dubaihotspots}. The remaining gap is an explainable prediction framework that converts incident records into a grid/time model and explains high-risk outputs.
+
+The contribution of this paper is a reproducible incident-only framework for Dubai. It uses H3 cells as spatial units, 3-hour windows as temporal units, chronological evaluation, full-grid test scoring, calibrated XGBoost risk scores, and SHAP explanations. The work is designed as a historical decision-support prototype, not a live deployment.
+
+\section{Related work}
+
+Traffic accident prediction has moved from aggregate descriptive studies toward spatiotemporal modeling. Citywide risk models show that historical incident patterns can be converted into region/time risk estimates \cite{ren2017citywide,zhou2020riskoracle}. Grid-based crash-prediction work supports aggregating point crashes into spatial cells before prediction \cite{kashifi2022grid}. Recent urban accident-risk studies also show that spatial proximity, regionality, and sparsity affect predictive performance \cite{chen2024urbanrisk}.
+
+Explainable traffic-safety models have mainly focused on fatality, severity, or duration prediction. SHAP has been used to explain traffic fatality and severity models \cite{rifat2024explainable,sufian2023severity}. LIME provides a model-agnostic local explanation alternative \cite{ribeiro2016lime}. This paper applies these ideas to a different target: whether a Dubai H3 cell contains at least one reported non-recurrent incident in a 3-hour window.
+
+\section{Data and preprocessing}
+
+The source data is an open Dubai Police traffic incident dataset from Dubai's Data and Statistics portal. The frozen snapshot contains 720,155 rows and six raw fields: incident ID, occurrence time, Arabic category, two coordinate fields, and load timestamp. The date range is 13 August 2018 08:17:21 to 1 June 2026 14:09:45.
+
+The Arabic category field contains 233 unique values. These values are translated and parsed once, then joined back to the full dataset. Unknown severity is retained as a separate class and assigned severity weight 0 for weighted sums. Unknown-severity incidents remain in the binary incident-occurrence target because they are real incident records.
+
+Coordinate validation showed that most valid source records used reversed coordinate order. The cleaning process keeps the raw coordinate fields and adds normalized longitude, latitude, and coordinate-status fields. After category and coordinate filters, 717,615 rows are usable for map-based EDA.
+
+\section{Method}
+
+Each incident is assigned to an H3 resolution-8 cell and a 3-hour window. For each inside-Dubai H3 cell and each time window, the target is 1 if at least one incident occurs and 0 otherwise. The final inside-Dubai grid contains 1,305 cells. The test period contains 4,463,100 candidate cell/windows and 108,224 positive cell/windows.
+
+The final feature set includes calendar variables, same-cell lag features over 3 hours, 24 hours, and 7 days, train-period historical-risk priors, and ring-1 neighboring-cell lag features. Neighboring-cell features are computed from H3 ring-1 cells inside Dubai only. All lag features use windows before the target window.
+
+Historical risk, Logistic Regression, Random Forest, and XGBoost are evaluated. The selected model is the default XGBoost classifier with the neighbor-lag feature set. SHAP explains global and local model behaviour \cite{lundberg2017shap}. LIME is used as a local model-agnostic comparison on selected cases \cite{ribeiro2016lime}.
+
+The evaluation is chronological. Early windows are used for training, the next block of windows is used for validation and calibration, and the final block is used for test reporting. The test set is a full inside-Dubai grid, not a sampled-negative table. This matters because incident-positive cell/windows are rare. PR-AUC and top-k hotspot metrics are therefore reported along with ROC-AUC, recall, and F1-score.
+
+\section{Results}
+
+The first full-grid comparison shows that XGBoost improves over historical risk. Historical risk obtains PR-AUC 0.0882 and F1-score 0.1522. XGBoost with the initial feature set obtains PR-AUC 0.0967 and F1-score 0.1615. Adding ring-1 neighboring-cell lag features improves XGBoost to PR-AUC 0.0992, ROC-AUC 0.8120, recall 0.2720, and F1-score 0.1645.
+
+\begin{table}[H]
+\centering
+\caption{Paper draft summary of final full-grid result}
+\label{tab:paper_final_result}
+\small
+\begin{tabular}{lrrrr}
+\toprule
+\textbf{Model} & \textbf{ROC-AUC} & \textbf{PR-AUC} & \textbf{Recall} & \textbf{F1} \\
+\midrule
+Historical risk & 0.7990 & 0.0882 & 0.2679 & 0.1522 \\
+XGBoost without neighbor lags & 0.8067 & 0.0967 & 0.2630 & 0.1615 \\
+XGBoost with neighbor lags & 0.8120 & 0.0992 & 0.2720 & 0.1645 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+At top 20 cells per test window, the final neighbor-feature XGBoost model captures 9,138 positive cell/windows and 10,416 incidents. This supports its use as a hotspot-ranking model. A hard-negative sample and a tuned XGBoost configuration were also tested, but both reduced the untouched full-grid test result. Sigmoid calibration reduces Brier score from 0.2127 to 0.0227 while preserving PR-AUC and top-k ranking.
+
+SHAP identifies historical cell-hour risk as the strongest feature group, followed by year, historical cell risk, previous 7-day same-cell incident count, and previous 7-day neighboring-cell incident count. LIME broadly agrees with SHAP on selected local cases. The explanations indicate that the model mainly learns long-term zone/time risk and recent local or nearby activity. These are model explanations, not causal claims.
+
+\section{Discussion}
+
+The strongest result is not that the model predicts every incident. It does not. The useful result is that the model gives a reproducible way to rank zones by incident risk and explain the ranking. Historical risk is already a strong baseline, so the machine-learning improvement is modest. The neighboring-cell feature experiment shows that nearby recent activity adds signal, but the final model is still mainly driven by long-term cell/hour risk.
+
+The failed experiments are also informative. The tested hard-negative sample reduced full-grid PR-AUC and top-k incident capture, so it was not promoted. The tuned XGBoost candidate was selected using validation data but did not improve the untouched test period, so the default neighbor-feature model was retained. This gives a clearer final model-selection story than simply reporting the last model trained.
+
+\section{Dashboard demonstration}
+
+The dashboard presents the final model as a rolling replay. It defaults to the latest complete observed day before the data cutoff and shows top-ranked H3 zones on an English dashboard map. A separate zone-explanation view shows the top SHAP reasons, feature values, and contribution bars for a selected zone. The dashboard states that forecasts after 1 June 2026 require updated incident records because the final model uses recent lag features.
+
+\section{Conclusion}
+
+The study shows that open Dubai Police incident records can support explainable grid-time incident-risk prediction after careful cleaning, coordinate correction, and target construction. The final model does not solve live traffic management, but it provides a reproducible and interpretable baseline for ranking incident-risk zones in Dubai. Future work should add updated incident feeds, weather, road attributes, traffic-flow measurements, and road-network graph features if those data sources become available.

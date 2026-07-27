@@ -1,0 +1,187 @@
+\chapter{Methodology}
+
+The methodology is designed to keep the prediction task reproducible and defensible. The pipeline starts with cleaned incident records, constructs grid-time labels, builds only past-available features, compares simple and stronger models, and then explains the selected model.
+
+This final report extends the mid-semester pipeline rather than replacing it. The same data audit, Arabic category translation, coordinate normalization, H3 grid construction, and chronological evaluation design are retained. The final stage adds neighbor-lag model selection, calibration, SHAP/LIME comparison, and the rolling-replay dashboard.
+
+\section{Pipeline overview}
+
+The complete pipeline has six stages:
+
+\begin{enumerate}
+    \item clean raw incident records, translate categories, and normalize coordinates;
+    \item assign incidents to H3 cells and 3-hour windows;
+    \item aggregate positive grid-time rows and construct negative grid-time rows;
+    \item build leakage-safe temporal, lag, historical-risk, and neighboring-cell features;
+    \item train and evaluate baseline and machine-learning models under chronological splits;
+    \item calibrate and explain the selected model, then present it in a dashboard.
+\end{enumerate}
+
+The important design principle is that every model feature must be available before the target window begins. If a row represents cell \(z\) during window \(t\), the model may use information from earlier windows but not the incident count inside window \(t\). This rule is applied to same-cell lag features, neighboring-cell lag features, historical-risk priors, threshold selection, calibration, and dashboard replay.
+
+\section{Prediction unit and label construction}
+
+The prediction unit is an H3 cell/time-window pair. Let \(z\) denote an H3 cell and \(t\) denote a 3-hour window. The model row is \((z,t)\). The binary label is:
+
+\[
+y_{z,t} =
+\begin{cases}
+1, & \text{if one or more incidents occur in cell } z \text{ during window } t,\\
+0, & \text{otherwise.}
+\end{cases}
+\]
+
+This formulation creates two types of rows. A positive row means at least one cleaned incident point falls in that H3 cell during that window. A negative row means the cell and window exist in the evaluation universe but no incident is observed. The negative rows do not appear directly in the raw incident file; they are created by combining cells and time windows.
+
+This is why the model sample is larger than the raw file. The raw file has 720,155 incident records. The H3/time construction creates 678,174 positive grid-time rows and many more possible negative cell/windows. The first training table keeps all positive rows and a 5:1 sampled set of negative rows, giving 4,069,044 model rows. Full-grid validation and test use every inside-Dubai cell/window candidate.
+
+\section{Feature groups}
+
+All model features are designed to be available before the target 3-hour window begins. Current-window incident counts, severity sums, and severity category counts are excluded from model inputs because they are part of the label being predicted.
+
+\begin{table}[H]
+\centering
+\caption{Feature groups used in the final model path}
+\label{tab:feature_groups}
+\small
+\begin{tabularx}{\textwidth}{L{0.27\textwidth}Y}
+\toprule
+\textbf{Feature group} & \textbf{Examples and purpose} \\
+\midrule
+Calendar features & Hour block, day of week, weekend flag, month, and year. These represent recurring temporal patterns. \\
+Same-cell lag features & Previous 3-hour, 24-hour, and 7-day incident counts for the same H3 cell. These capture recent local activity. \\
+Severity-weighted lag features & Previous 24-hour and 7-day known-severity weighted sums. Unknown severity contributes zero. \\
+Historical-risk priors & Train-period empirical risk by cell-hour, cell, hour, and global rate. These capture long-run spatial and time-of-day risk. \\
+Neighboring-cell lag features & Ring-1 H3 neighbor incident counts, severity-weighted sums, and active-cell counts. These capture nearby recent activity. \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+The calendar features are simple but important. The EDA shows that incident volume varies by hour and weekday. The lag features represent recent conditions in the same H3 cell. For example, a cell that had several incidents in the previous week may be more likely to be active again than a cell with no recent activity. Historical-risk priors represent long-term patterns learned from the training period only.
+
+\section{Neighboring-cell feature design}
+
+Neighboring cells are obtained from the H3 ring-1 neighborhood. The center cell is excluded, and only inside-Dubai cells are retained. This gives a simple spatial-neighborhood signal without requiring a full road-network graph.
+
+The final neighbor features are:
+
+\begin{itemize}
+    \item previous 3-hour neighboring incident count;
+    \item previous 24-hour neighboring incident count;
+    \item previous 7-day neighboring incident count;
+    \item previous 24-hour neighboring severity-weighted sum;
+    \item previous 7-day neighboring severity-weighted sum;
+    \item previous 24-hour active-neighbor-cell count;
+    \item previous 7-day active-neighbor-cell count;
+    \item number of inside-Dubai ring-1 neighbors retained for the cell.
+\end{itemize}
+
+These features are useful because incidents are not always isolated inside one hexagon. A nearby breakdown, obstruction, or collision may affect surrounding cells, and adjacent cells may share road corridors or activity patterns. The final report does not claim that H3 neighbors are the same as road-network neighbors. They are a reproducible spatial approximation that can be computed from the available data.
+
+\section{Training design}
+
+The first model training table uses all positive grid-time rows and a deterministic 5:1 sample of negative rows. This keeps training feasible while exposing the models to non-incident conditions. The final validation and test evaluation are not sampled. They score every inside-Dubai H3 cell for every validation or test 3-hour window.
+
+This distinction matters. Sampled-negative results are useful for checking that the pipeline works, but they do not represent the real rarity of incident-positive cell/windows. The full-grid inside-Dubai evaluation is the main result because it uses the actual evaluation denominator: all candidate cells and windows in the selected spatial scope.
+
+\begin{table}[H]
+\centering
+\caption{Training and evaluation populations}
+\label{tab:training_evaluation_populations}
+\small
+\begin{tabularx}{\textwidth}{L{0.28\textwidth}L{0.22\textwidth}Y}
+\toprule
+\textbf{Population} & \textbf{Rows} & \textbf{Purpose} \\
+\midrule
+Sampled training table & 4,069,044 rows before later inside-Dubai filtering & Used for initial model training and the first sampled-negative baseline. \\
+Inside-Dubai full-grid training universe & 20,822,580 candidate rows & Used to compute train-period historical-risk denominators. \\
+Inside-Dubai full-grid validation & 4,461,795 candidate rows & Used for threshold selection and calibration fitting. \\
+Inside-Dubai full-grid test & 4,463,100 candidate rows & Used once for final reported performance. \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+The training cap for XGBoost is 1,000,000 deterministic sampled rows. This cap keeps training feasible on a laptop while still using a large training sample. Validation and test are never capped in the full-grid experiments.
+
+\section{Model families}
+
+Four model families are compared.
+
+\subsection{Historical risk baseline}
+
+The historical risk baseline is the minimum serious baseline for this task. It estimates train-period empirical risk by H3 cell and hour block, with fallback rates where needed. If a specific cell-hour combination has little or no training history, the baseline falls back to broader cell-level, hour-level, and global rates.
+
+This baseline is strong because the task is spatial and temporal. Some zones and time blocks are repeatedly active. A machine-learning model must therefore do more than rediscover that historically active cells remain risky.
+
+\subsection{Logistic Regression}
+
+Logistic Regression is used as a simple supervised baseline. It tests whether the engineered features contain predictive signal in a linear model. Numeric features are scaled, categorical features are one-hot encoded, and class balancing is used. Logistic Regression is not expected to capture complex nonlinear interactions, but it is useful because it is easier to interpret than tree ensembles.
+
+\subsection{Random Forest}
+
+Random Forest is a nonlinear tree ensemble. It can capture interactions between calendar variables, historical risk, and lag counts. It is included as a stronger baseline before XGBoost. The training run uses a deterministic cap because fitting large forests on the full sampled table is heavier than fitting the linear model.
+
+\subsection{XGBoost}
+
+XGBoost is the selected model family for the final pipeline. It is a gradient-boosted tree method suited to structured tabular data \cite{chen2016xgboost}. It can model nonlinear interactions, works well with engineered historical and lag features, and integrates cleanly with SHAP explanations. LightGBM is reviewed as a related boosted-tree framework \cite{ke2017lightgbm}, but the final implementation uses XGBoost because it was already integrated with the full-grid evaluation, calibration, SHAP, LIME, and dashboard workflow.
+
+\section{Leakage controls}
+
+The main leakage risk is using information from the target window or later periods when building features. The model must predict whether a cell/window will contain an incident, so the current-window incident count and severity statistics cannot be predictors.
+
+\begin{table}[H]
+\centering
+\caption{Leakage controls used in modeling}
+\label{tab:leakage_controls}
+\small
+\begin{tabularx}{\textwidth}{L{0.30\textwidth}Y}
+\toprule
+\textbf{Leakage risk} & \textbf{Control used} \\
+\midrule
+Current-window incident counts used as features & \texttt{incident\_count}, severity sums, and severity count columns are excluded from model inputs. \\
+Future temporal patterns used in training & Train, validation, and test splits are chronological. Random K-fold is not used as the main validation design. \\
+Historical-risk priors computed from future periods & Main historical priors are computed from the training period; an expanding-history audit checks whether training-row historical priors materially change the result. \\
+Lag features using the current window & Previous-window features are computed from windows before the target window only. \\
+Hard-negative mining from validation/test & Hard negatives are mined only from training-window negatives. Validation and test remain untouched. \\
+Calibration fitted on test labels & Sigmoid and isotonic calibration are fitted only on validation predictions and labels. \\
+Dashboard forecasting beyond data cutoff & Active dashboard uses rolling replay. Later forecasts require updated incident records because recent lag features are unavailable after 1 June 2026. \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+Random K-fold cross-validation is not used as the main result. In a time-indexed risk task, random folds would mix earlier and later windows. The model could learn temporal patterns from future windows and then appear stronger when evaluated on earlier rows. If a later robustness check is added, it should use blocked or rolling time-series cross-validation rather than random K-fold.
+
+\section{Model-improvement experiments}
+
+After the first full-grid evaluation, four improvement or robustness checks are run:
+
+\begin{enumerate}
+    \item \textbf{Historical-risk audit}: compare full features, expanding training-history priors, no historical-risk features, temporal-lag-only features, temporal-only features, and historical score only.
+    \item \textbf{H3/time-window sensitivity}: compare H3 resolution 7, 8, and 9, and 1-hour, 3-hour, and 6-hour window choices.
+    \item \textbf{Neighboring-cell lag features}: add ring-1 H3 neighbor history and compare against the current XGBoost feature set.
+    \item \textbf{Hard-negative and tuning experiments}: test whether a harder negative training sample or tuned XGBoost hyperparameters improve the untouched full-grid test result.
+\end{enumerate}
+
+The experiments are ordered deliberately. The full-grid result comes before model improvement so that the project has a realistic evaluation denominator. The historical-risk audit checks whether the model is mainly historical memorization. Sensitivity checks test whether the chosen grid/time setting is defensible. Neighbor features are added only after the main pipeline works. Hard-negative training and tuning are treated as experiments, not automatically accepted improvements.
+
+\section{Evaluation metrics}
+
+The report uses ROC-AUC, PR-AUC, precision, recall, F1, confusion matrices, and top-k hotspot metrics. PR-AUC is emphasized because incident-positive cell/windows are rare \cite{saito2015prauc}. Accuracy is not emphasized because a model that predicts every cell/window as negative would look accurate in a rare-event task while being useless for hotspot detection.
+
+ROC-AUC measures whether the model tends to score positive rows above negative rows across thresholds. PR-AUC focuses on precision and recall, so it is more sensitive to rare positives. F1 is the harmonic mean of precision and recall at the selected threshold. Recall measures how many true positive cell/windows are captured. Precision measures how many predicted positive cell/windows actually contain incidents.
+
+Top-k hotspot metrics answer a different question. For each test time window, the model ranks all inside-Dubai cells by risk. The top-k metric checks whether the highest-ranked cells contain actual incidents. This is closer to how a traffic analyst might inspect the model output: the analyst may care about the top 5, 10, or 20 zones per time block rather than a binary decision for every cell in the city.
+
+\section{Calibration}
+
+The selected XGBoost score is calibrated before dashboard display. Calibration does not change the ranking model; it post-processes scores so the displayed risk value is closer to an observed probability. Sigmoid calibration and isotonic calibration are fitted on validation predictions only. The test set is used for final reporting.
+
+Calibration is needed because a raw machine-learning probability can be poorly calibrated even when it ranks cells well. A score of 0.80 should not be displayed as an 80\% risk unless the observed rate in similar scored cases is close to 80\%. The calibration experiment shows that the uncalibrated XGBoost score is useful for ranking but too confident as a probability. Sigmoid calibration is therefore used for dashboard risk display.
+
+\section{Explainability}
+
+SHAP is the main explanation method because it provides global and local feature attributions for the selected XGBoost model \cite{lundberg2017shap}. LIME is used as a local model-agnostic comparison on selected examples \cite{ribeiro2016lime}. The explanations describe how the model uses available features. They do not prove that a feature causes an incident.
+
+The SHAP global output ranks feature groups by average contribution magnitude. This shows whether the model is mainly using historical cell-hour risk, recent incident history, neighboring-cell history, calendar variables, or other engineered features. The SHAP local output explains one selected prediction by showing which features pushed the score up or down. LIME is used on the same local cases to check whether a different explanation method points to similar drivers.
+
+The final dashboard uses SHAP for selected-zone explanations because SHAP can be computed consistently for the final tree model and can be shown as top reasons with contribution bars. LIME remains in the report as a supporting local comparison.

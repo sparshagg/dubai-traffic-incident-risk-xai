@@ -1,0 +1,95 @@
+\chapter{Dashboard demonstration}
+
+The dashboard is the practical demonstration layer for the thesis. It lets a supervisor, examiner, or technical reviewer inspect the model output without reading the modeling code. The dashboard does not claim live traffic monitoring or operational deployment. It uses the frozen historical incident snapshot, the selected inside-Dubai H3 resolution-8 grid, 3-hour windows, sigmoid-calibrated XGBoost risk values, and SHAP explanations.
+
+\section{Dashboard purpose}
+
+The purpose of the dashboard is to translate the modeling result into three simple questions:
+
+\begin{enumerate}
+    \item Where does the model rank incident risk highest?
+    \item When does the selected risk window occur?
+    \item Why does the model rank a selected zone and time as risky?
+\end{enumerate}
+
+These questions are easier to defend than a generic model-results page. The dashboard is not meant to show every row of the full test matrix. It focuses on ranked zones, map inspection, and explanation. The scientific evidence remains available in separate views, but the first interaction is centered on the prediction output.
+
+\section{Rolling replay concept}
+
+The main dashboard view is a rolling replay. It uses the final selected model, the default neighbor-feature XGBoost classifier, on complete observed days near the end of the available data. The replay is not a long-range forecast after the source-data cutoff. It is a historical demonstration of how the selected model behaves when the required recent lag features are available.
+
+This design choice is important. The final model uses previous 3-hour, 24-hour, and 7-day incident counts for the same H3 cell and for neighboring H3 cells. These features can be computed for historical replay windows because the previous windows are known. They cannot be computed for dates after 1 June 2026 unless updated incident records are supplied. Showing a post-cutoff date without those updated records would either require a simplified model or missing lag features. The dashboard avoids that confusion and states the data-update requirement directly.
+
+\section{Implementation structure}
+
+The dashboard is implemented with Streamlit, PyDeck, and Plotly. It uses compact precomputed data instead of loading the raw incident file or the full 4.46 million-row historical test matrix during interaction. This keeps the application responsive while preserving the same grid and time-window formulation used in the modeling chapters.
+
+The dashboard has five views:
+
+\begin{enumerate}
+    \item \textbf{Rolling replay}: date selector, 3-hour time-window selector, English dashboard map, top-ranked H3 zones, calibrated risk values, known replay outcomes, and a warning about post-cutoff forecasting.
+    \item \textbf{Zone explanation}: the same replay controls, top SHAP reasons, feature values, and a local SHAP contribution chart for the selected zone.
+    \item \textbf{Historical check}: comparison between ranked H3-cell predictions and known test-period outcomes.
+    \item \textbf{Model evidence}: dataset summaries, EDA charts, full-grid evaluation metrics, hotspot ranking, and calibration reliability.
+    \item \textbf{Scope notes}: limitations and deployment boundaries.
+\end{enumerate}
+
+The map uses a MapTiler vector style rendered through PyDeck. This was chosen because generic free raster basemaps can show local-language street labels in Dubai. H3 polygons are drawn over the MapTiler map, and the user can zoom, pan, inspect ranked zones, and select a zone for explanation. The displayed risk value is the sigmoid-calibrated XGBoost probability. SHAP is used for dashboard explanations because it is stable for the selected tree-based model and can explain the same model used for ranking. LIME remains a report-level comparison on selected local cases.
+
+\section{Dashboard data flow}
+
+The dashboard data is prepared offline. The preparation step retrains and scores the final default neighbor-feature XGBoost model, applies sigmoid calibration for displayed risk values, keeps compact top-risk records for replay windows, stores H3 polygons, and stores SHAP contributor rows for the displayed zones. The dashboard then reads these compact files at runtime.
+
+This design avoids two problems. First, the dashboard does not need to retrain the model when opened. Second, it does not need to load the full raw incident file or the full-grid test matrix. The model evidence shown in the dashboard still matches the thesis results because the compact files are generated from the same final model path.
+
+\section{Dashboard screenshots}
+
+Figure~\ref{fig:dashboard-rolling-replay} shows the default replay page. The default replay date is selected automatically as the latest complete observed day before the data cutoff. The map uses MapTiler English labels and displays the highest-ranked H3 zones for the selected replay date. The visible message tells the reader that later forecasts require updated incident data.
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=\textwidth]{dashboard_rolling_replay.png}
+    \caption{Rolling replay view with ranked H3 risk zones.}
+    \label{fig:dashboard-rolling-replay}
+\end{figure}
+
+Figure~\ref{fig:dashboard-zone-explanation} shows the zone-explanation view. The selected zone has plain-language SHAP reasons, feature values, and a local contribution chart. This is the main dashboard answer to the question: why did the model rank this area and time as risky?
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=\textwidth]{dashboard_zone_explanation.png}
+    \caption{Zone-explanation view with SHAP reasons and local contribution chart.}
+    \label{fig:dashboard-zone-explanation}
+\end{figure}
+
+The explanation wording is intentionally model-specific. It says that a feature increased or decreased the model's predicted risk. It does not say that the feature caused an incident. For example, a high previous 7-day incident count can be a reason for a high model score, but it is not proof that previous incidents physically caused the next one.
+
+Figure~\ref{fig:dashboard-historical-check} shows the historical-check view. This view is kept for defense questions because it links the map output to known test-period outcomes. It helps explain the difference between a model demonstration and a claimed live forecast.
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=\textwidth]{dashboard_historical_check.png}
+    \caption{Historical-check view for comparing ranked H3-cell predictions with known outcomes.}
+    \label{fig:dashboard-historical-check}
+\end{figure}
+
+Figure~\ref{fig:dashboard-model-evidence} shows the model-evidence view. It keeps the scientific material available without making it the first screen. This view includes the dataset scale, EDA summaries, full-grid historical evaluation metrics, hotspot ranking, and calibration reliability.
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=\textwidth]{dashboard_model_evidence.png}
+    \caption{Model-evidence view with EDA, full-grid metrics, hotspot ranking, and calibration reliability.}
+    \label{fig:dashboard-model-evidence}
+\end{figure}
+
+\section{Use in defense}
+
+The dashboard can be demonstrated in a short sequence. First, the rolling replay view shows where and when the final model ranks incident risk highest. Next, the zone-explanation view shows the SHAP reasons behind one selected zone. The historical-check view can then be used to show that the same grid-time formulation was evaluated against known outcomes. Finally, the model-evidence view connects the dashboard to the thesis metrics, calibration results, and EDA.
+
+This sequence is useful for examiner questions because it separates the product story from the research evidence. The product story is where, when, and why. The research evidence is the full-grid evaluation, calibration, and explanation results. Both are needed for a final-year computer science thesis.
+
+\section{Dashboard limitations}
+
+The dashboard remains a prototype for inspection and communication. A real operational deployment would need live incident feeds, formal API integration, stakeholder approval, monitoring, retraining policy, and additional external features such as weather, planned events, road attributes, and traffic-flow measurements.
+
+The current dashboard is also limited by the data cutoff. It can replay model behavior on observed windows before 1 June 2026. It cannot honestly produce rolling forecasts after that date unless consecutive updated incident records are provided. This limitation is stated in the dashboard so that the demonstration does not overclaim.

@@ -1,0 +1,21 @@
+rank,incident_type_code,incident_type_en,count,share_of_category_eda
+1,disabled_vehicle_on_road,disabled vehicle on road,83297,11.57%
+2,two_vehicle_collision,two-vehicle collision,78046,10.84%
+3,hit_pole,hit pole,66602,9.25%
+4,double_parking,double parking behind vehicles,58031,8.06%
+5,hit_wall,hit wall,47524,6.60%
+6,hit_barrier,hit barrier,41877,5.82%
+7,vehicle_breakdown_public_road,vehicle breakdown on public road,35380,4.92%
+8,hit_and_run,hit and run,32046,4.45%
+9,hit_curb,hit curb,27649,3.84%
+10,light_vehicle_breakdown,light vehicle breakdown,25951,3.61%
+11,hit_motorcycle,hit motorcycle,23565,3.27%
+12,object_in_road,object in road,22944,3.19%
+13,vehicle_violation,violating vehicles,22262,3.09%
+14,multi_vehicle_collision,multi-vehicle collision,18182,2.53%
+15,unknown_party_incident,incident involving unknown party,16165,2.25%
+16,heavy_vehicle_breakdown,heavy vehicle breakdown,10169,1.41%
+17,traffic_congestion,traffic congestion,8763,1.22%
+18,pedestrian_collision,pedestrian collision,8679,1.21%
+19,motorcycle_rollover,motorcycle rollover,8617,1.20%
+20,hit_two_wheeler_unspecified,"hit two-wheeler, unspecified",7600,1.06%

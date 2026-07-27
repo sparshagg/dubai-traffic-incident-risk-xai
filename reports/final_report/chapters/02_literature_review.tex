@@ -1,0 +1,102 @@
+\chapter{Literature review}
+
+This chapter reviews the work most relevant to the thesis: Dubai and UAE road-safety studies, grid-based traffic-risk prediction, non-recurrent incident modeling, explainable AI, and imbalanced evaluation. The purpose is to identify the research gap and justify the methodology used in this report.
+
+The review is used in two ways. The main chapter gives a short synthesis of the papers that shape the thesis design. Appendix A keeps the full reviewed literature matrix so that the broader source base remains visible without making this chapter a catalogue of papers. This structure follows the submitted mid-semester report, but the final report links each literature theme more directly to the implemented method.
+
+\section{Dubai and UAE road-safety context}
+
+Al Dah's Dubai crash thesis established that Dubai road-safety analysis needs local evidence rather than direct transfer of assumptions from other countries \cite{aldah2010dubai}. Abdelfatah et al. studied Dubai accident trends and causes using aggregate accident statistics \cite{abdelfatah2015dubai}. These studies are important because they define the local road-safety context, but they do not build fine-grained prediction models over small spatial units and short time windows.
+
+Abuzaid et al. show that UAE traffic-safety questions can be studied with AI methods \cite{abuzaid2024uae}. Their work is broader than this thesis and is not based on Dubai incident-level grid-time prediction. Alsaleh et al. are closer to this thesis because they use Dubai Police traffic records to study temporal patterns and severity-weighted hotspots \cite{alsaleh2026dubaihotspots}. Their work supports the use of Dubai Police records for spatial analysis, but it remains descriptive. This thesis uses a similar local data source and moves toward predictive modeling and model explanation.
+
+The Dubai and UAE studies define the local need but leave a clear modeling gap. They show that road-safety outcomes in Dubai should be studied with local data, and they show that Dubai Police records can support temporal and spatial analysis. They do not answer whether incident points can be converted into a supervised grid-time table, whether a machine-learning model improves over historical hotspot risk, or whether the model's high-risk outputs can be explained for a selected zone.
+
+\section{Spatiotemporal traffic-risk prediction}
+
+Traffic accident prediction has moved from aggregate trend analysis toward spatiotemporal machine learning. Behboudi et al. review this shift across accident occurrence, severity, frequency, and duration tasks \cite{behboudi2024review}. Ren et al. model citywide accident risk from historical accident patterns \cite{ren2017citywide}. Zhou et al. introduce RiskOracle for fine-grained accident-risk forecasting and highlight sparsity as a central problem in citywide prediction \cite{zhou2020riskoracle}. Chen et al. revisit urban accident-risk prediction and show that regionality, proximity, similarity, and sparsity affect model performance \cite{chen2024urbanrisk}. Other advanced methods, including hierarchical transfer models and transformer-based contextual models, show the same research direction but require richer inputs and heavier architectures than the current thesis uses \cite{an2022hintnet,saleh2022contextualvit}.
+
+These studies support the main structure of this thesis: risk is modeled as a spatial and temporal outcome, not just as a citywide count. They also show why evaluation must consider rare positives. Most grid/time combinations have no incident, so a model can look accurate while failing to rank the genuinely risky locations.
+
+This thesis follows the same broad idea but keeps the data requirements lower. Several advanced spatiotemporal models depend on traffic-flow streams, weather records, road-network graphs, points of interest, or remote-sensing features. Those inputs can improve prediction, but they also make the first Dubai incident-only thesis harder to reproduce from open data. The implemented framework therefore starts with incident history and calendar features, then adds neighboring-cell history as a lightweight spatial signal.
+
+\section{Grid-based and road-level modeling}
+
+Kashifi et al. provide direct support for grid-based crash prediction \cite{kashifi2022grid}. Their work shows that crash records can be aggregated into spatial cells and predicted over time. H3 is used in this thesis for the same practical reason: the Dubai dataset has coordinates, but it does not provide a complete verified road graph, traffic-flow stream, or road-segment attribute table.
+
+Road-level graph models such as Gao et al. and Kim et al. are relevant but require richer spatial structure \cite{gao2023uncertainty,kim2024sstgcn}. Weather-aware crash forecasting and severe-accident studies also show that external covariates can improve risk modeling when reliable weather, traffic-flow, and road-attribute sources are available \cite{ogungbire2026weather,khulbe2019severe}. These studies are useful future-work references because road-network topology and external context can represent mechanisms that grid cells cannot capture directly. For this thesis, H3 gives a simpler and reproducible spatial unit. It also supports neighboring-cell features, which partially capture local spatial dependence without requiring a full road graph.
+
+The choice of H3 is therefore not only a convenience. It is a defensible compromise between point-level records and road-network modeling. Point-level records are too sparse and irregular for a supervised table. Road-level modeling would require a verified Dubai road graph and a reliable method for snapping incident points to road segments. H3 gives a stable middle layer: every incident can be assigned to a cell, every cell can be evaluated in every time window, and neighboring cells can be computed consistently.
+
+\section{Non-recurrent incident modeling}
+
+Non-recurrent incidents include crashes, breakdowns, obstructions, stalled vehicles, and similar irregular events. Kalair and Connaughton model traffic incident duration with interpretable hazard-based methods \cite{kalair2021duration}. Grigorev et al. study incident-duration prediction with machine-learning frameworks and show that incident type, traffic conditions, location, and context can affect duration \cite{grigorev2022bilevel,grigorev2024sydney}.
+
+Other incident studies use text encodings, streaming traffic data, and secondary-crash formulations to represent richer incident dynamics \cite{grigorev2022textencoding,parsa2019realtime,han2026secondary,chen2025secondarygan}. These papers clarify the boundary of this thesis. Incident duration is a valid non-recurrent incident task, but it requires a verified clearance or resolution time. Secondary-crash and real-time detection tasks require traffic-flow streams or continuously updated detector data. The confirmed Dubai fields used here do not contain reliable clearance timestamps or live traffic streams. The target is therefore incident occurrence risk in a grid/time window, not incident duration or real-time incident detection.
+
+This boundary is important for the dashboard as well. A dashboard can replay how the selected model ranks recent observed windows, and it can show what would be needed for later post-cutoff prediction. It cannot honestly claim post-cutoff rolling prediction unless updated incident records are available to recompute the recent lag features used by the final model.
+
+\section{Explainable AI for traffic safety}
+
+Traffic-safety models need interpretability because predictions may inform operational attention, hotspot review, or safety planning. Rifat et al. use SHAP to explain traffic fatality prediction \cite{rifat2024explainable}. Sufian and Varadarajan, Castellani et al., and related severity studies also show how XAI can help identify model drivers in road-safety tasks \cite{sufian2023severity,castellani2025severity}.
+
+Severity and injury-severity studies further show that explanatory outputs are most useful when they are tied to specific features and prediction cases rather than presented as generic importance lists \cite{chakraborty2021severity,bibb2025severity}. Graph-attention and deep severity models point to future richer modeling options, but they are harder to defend with the current open incident fields \cite{nobin2025starn}. This thesis uses SHAP because it gives global and local explanations for tree-based models and has a clear theoretical basis \cite{lundberg2017shap}. LIME is included as a local model-agnostic comparison because it explains predictions through local surrogate models \cite{ribeiro2016lime}. General XAI discussions also support comparing SHAP and LIME rather than relying on one method without review \cite{salih2023xai}. In the final dashboard, SHAP is used for zone-level explanations because it is more stable and easier to aggregate for the selected XGBoost model.
+
+The thesis uses XAI in a constrained way. SHAP and LIME are not used to prove the causes of traffic incidents. They are used to answer a narrower model-audit question: for a given high-risk or low-risk prediction, which engineered features pushed the trained model's score up or down? This distinction is repeated in the report and dashboard because causal language would overstate what the dataset supports.
+
+\section{Evaluation under class imbalance}
+
+Grid-time incident prediction is highly imbalanced. Most H3 cell/time windows do not contain incidents. ROC-AUC is still useful for ranking positives above negatives, but PR-AUC is more informative when positives are rare \cite{saito2015prauc}. F1 and recall are reported because they show the thresholded classification tradeoff. Top-k hotspot metrics are also reported because a traffic analyst may care about the top ranked zones per time window rather than a binary label for every cell.
+
+Sampling and resampling methods such as SMOTE are common in imbalanced classification \cite{chawla2002smote}. They are reviewed here, but the final model keeps a sampled-negative training table and evaluates on the full inside-Dubai validation and test grid. This avoids reporting only an artificially balanced test set. For hotspot interpretation, statistical hotspot methods such as Getis-Ord statistics provide an important descriptive comparison point \cite{getis1992distance,ord1995local}. The thesis uses predictive top-k hotspot metrics instead of replacing prediction with purely descriptive hotspot detection.
+
+The thesis avoids random K-fold cross-validation as the main evaluation method. Random folds would mix earlier and later windows and can leak temporal patterns into training. Chronological train, validation, and test splits are used instead.
+
+\section{How the literature maps to the thesis design}
+
+\begin{table}[H]
+\centering
+\caption{Literature-to-method mapping}
+\label{tab:literature_to_method_mapping}
+\small
+\begin{tabularx}{\textwidth}{L{0.27\textwidth}Y Y}
+\toprule
+\textbf{Literature theme} & \textbf{Design implication} & \textbf{Implementation in this thesis} \\
+\midrule
+Dubai road-safety studies & Use local data and avoid transferring assumptions without evidence. & Use Dubai Police incident records and report Dubai-specific EDA before modeling. \\
+Grid-based risk prediction & Convert point events into spatial units and time windows. & Use H3 cells and 3-hour windows to create binary grid-time labels. \\
+Sparse citywide prediction & Do not rely on accuracy alone when positive labels are rare. & Report PR-AUC, recall, F1, and top-k hotspot metrics on the full inside-Dubai grid. \\
+Road-level and graph models & Spatial dependence matters, but a verified road graph is needed for road-segment prediction. & Use H3 ring-1 neighboring-cell lag features as a reproducible spatial-history signal. \\
+Non-recurrent incident duration work & Incident-risk and incident-duration prediction are different tasks. & Predict occurrence risk only; do not use load timestamp as clearance time. \\
+XAI traffic-safety studies & Model outputs should be explainable at global and local levels. & Use SHAP as the main explanation method and LIME as a local comparison. \\
+Imbalanced learning and hotspot statistics & Rare positives and hotspot ranking need explicit evaluation. & Use full-grid validation/test scoring and top-k hotspot ranking by time window. \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+\section{Core literature summary}
+
+\begin{table}[H]
+\centering
+\caption{Core literature used to position the thesis}
+\label{tab:core_literature_summary}
+\small
+\begin{tabularx}{\textwidth}{L{0.22\textwidth}L{0.25\textwidth}Y}
+\toprule
+\textbf{Source} & \textbf{Focus} & \textbf{Use in this thesis} \\
+\midrule
+Al Dah \cite{aldah2010dubai}; Abdelfatah et al. \cite{abdelfatah2015dubai} & Dubai road-safety context & Establish local crash and accident-analysis background. \\
+Alsaleh et al. \cite{alsaleh2026dubaihotspots} & Dubai temporal and severity-weighted hotspot analysis & Shows Dubai Police records can support spatial and temporal traffic-safety analysis. \\
+Kashifi et al. \cite{kashifi2022grid} & Grid-based crash prediction & Supports the grid-time framing used with H3 cells. \\
+Ren et al. \cite{ren2017citywide}; Zhou et al. \cite{zhou2020riskoracle} & Citywide accident-risk prediction & Motivates spatiotemporal risk prediction and top-k hotspot evaluation. \\
+Chen et al. \cite{chen2024urbanrisk} & Regionality, proximity, similarity, and sparsity & Supports historical-risk and neighboring-cell features. \\
+Lundberg and Lee \cite{lundberg2017shap}; Ribeiro et al. \cite{ribeiro2016lime} & SHAP and LIME & Provide the explanation methods used in the final model analysis. \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+\section{Research gap}
+
+The gap is the lack of a Dubai-specific, explainable grid-time model for non-recurrent incident occurrence risk. Existing Dubai work is mainly descriptive or hotspot-oriented. Existing spatiotemporal prediction work is often not Dubai-specific and frequently depends on richer traffic, weather, road-network, or remote-sensing inputs. Existing XAI traffic-safety work often explains severity, fatality, or duration rather than whether a Dubai grid cell is likely to contain an incident in a defined time window.
+
+This thesis addresses the gap by combining an open Dubai Police incident dataset, H3 grid-time target construction, chronological full-grid evaluation, neighboring-cell lag features, calibrated XGBoost scores, SHAP explanations, and a dashboard that lets the result be inspected visually. The full reviewed literature matrix is provided in Appendix A.

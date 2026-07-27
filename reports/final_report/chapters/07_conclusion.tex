@@ -1,0 +1,53 @@
+\chapter{Conclusion and future work}
+
+This thesis built an end-to-end explainable incident-risk prediction framework for Dubai. The work began with raw Dubai Police incident records and produced a complete grid-time modeling pipeline: data audit, Arabic category translation, severity handling, coordinate correction, H3 cell assignment, 3-hour aggregation, binary target construction, chronological model evaluation, model-improvement experiments, calibration, SHAP/LIME explanation, and dashboard presentation.
+
+\section{Completed objectives}
+
+The first objective was to check whether the open dataset was usable for incident-risk modeling. This was achieved through the raw-data audit, checksum recording, date-range check, missing-value check, category translation map, coordinate normalization, and EDA. The audit found that the dataset is large enough for spatiotemporal modeling, with 720,155 raw records and 717,615 map-usable rows after cleaning and category filtering.
+
+The second objective was to define a reproducible spatial and temporal formulation. This was achieved through the H3 resolution-8, 3-hour grid-time design. The final inside-Dubai evaluation grid contains 1,305 H3 cells. The target is binary: whether at least one incident occurs in a cell/window. This makes the prediction task clear and separates it from incident-duration or severity-outcome prediction.
+
+The third objective was to compare baseline and machine-learning models. The first sampled-negative models verified that the supervised-learning pipeline worked. The stronger result used inside-Dubai full-grid validation and test scoring. In that setting, XGBoost improved over the historical-risk baseline, and ring-1 neighboring-cell lag features gave a further modest improvement.
+
+The fourth objective was to test robustness and model choices. Historical-risk ablation showed that historical priors are important but did not reveal material training-time leakage in the expanding-history audit. H3/time-window sensitivity checks supported keeping H3 resolution 8 with 3-hour windows as the main thesis setting. The hard-negative training sample and tuned XGBoost configuration were tested but rejected because they reduced the untouched full-grid test result.
+
+The fifth objective was explainability. SHAP was used as the main explanation method for the final XGBoost model, and LIME was used as a selected local comparison. The final SHAP results show that the model is mainly driven by historical cell-hour risk, historical cell risk, recent same-cell incident history, and neighboring-cell recent activity. The explanations are model explanations, not causal claims.
+
+The sixth objective was a dashboard. The final dashboard presents the selected model through rolling replay on an English dashboard map. It shows ranked H3 risk zones, calibrated risk values, known replay outcomes, and SHAP reasons for selected zones. It also states that post-cutoff rolling forecasts require updated incident records because the selected model uses recent lag features.
+
+\section{Final model choice}
+
+The final selected model is the default XGBoost classifier with H3 resolution 8, 3-hour windows, inside-Dubai cells, historical-risk priors, same-cell lag features, and ring-1 neighboring-cell lag features. The neighboring features improve full-grid PR-AUC from 0.0967 to 0.0992 and F1-score from 0.1615 to 0.1645 compared with the same XGBoost setup without neighbor lags. At top 20 cells per test window, the final neighbor-feature model captures 10,416 incidents.
+
+The selected model is not the most complex model tested. The hard-negative training sample reduced PR-AUC and top-k incident capture, so it was rejected. The tuned XGBoost configuration was selected using validation data but did not improve the untouched test result, so it was also rejected. The final model is therefore the simplest strong model after the completed checks, not just the last model trained.
+
+\section{Main findings}
+
+The first main finding is that open Dubai Police incident records can support grid-time incident-risk modeling after careful cleaning. The raw data cannot be used directly because the Arabic category field must be parsed and the coordinate order must be corrected for most valid records.
+
+The second finding is that historical risk is a strong baseline. The model learns heavily from long-term cell/hour risk, which is expected in a spatial traffic-safety task. Machine learning improves over this baseline, but the improvement is modest rather than dramatic.
+
+The third finding is that neighboring-cell recent activity adds useful signal. The improvement is small, but it is consistent across PR-AUC, F1, and top-k incident capture. This supports the idea that nearby H3 cells contain relevant spatial history even without a full road-network graph.
+
+The fourth finding is that evaluation design strongly affects the reported metrics. Sampled-negative PR-AUC values are much higher than full-grid PR-AUC values because the sampled table has fewer non-incident rows. The full-grid inside-Dubai evaluation is the stronger denominator and should be treated as the main result.
+
+The fifth finding is that calibrated risk display is necessary for the dashboard. The raw XGBoost score is useful for ranking but too confident as a probability. Sigmoid calibration reduces Brier score from 0.2127 to 0.0227 while preserving ranking metrics, making it the better dashboard-facing score.
+
+\section{Limitations}
+
+The work depends on a frozen open dataset ending on 1 June 2026. Forecasts after that date require updated incident records because the selected model uses recent 3-hour, 24-hour, 7-day, and neighboring-cell lag features. The dataset does not include verified traffic-flow measurements, weather, planned events, road-segment attributes, or true incident clearance time. The model therefore predicts incident occurrence risk, not duration, severity outcome, traffic delay, or signal-control action.
+
+The coordinate correction, Arabic category translation, and H3 boundary assignment were audited, but source-data noise can still remain. The translation map should ideally be reviewed by an Arabic-speaking domain expert or the issuing entity before operational use. The Dubai boundary file may also omit some peripheral valid incident locations, which is why the final report focuses on inside-Dubai cells and keeps peripheral cells as an audit category.
+
+SHAP and LIME explain the trained model's behaviour, not the causes of traffic incidents. The calibrated probability should be read as a model risk score tied to the training data and evaluation design, not as an official operational probability. The dashboard is a historical prototype for inspection and communication, not a deployed traffic-management system.
+
+\section{Future work}
+
+Future work can extend the framework in several directions. Updated incident feeds would allow rolling forecasts beyond the current cutoff and would make the dashboard closer to operational use. Weather, holidays, public events, speed limits, road attributes, and traffic-flow measurements could be added if reliable sources are available. These features may help the model distinguish recurring historical risk from current operating conditions.
+
+Road-segment graph models could be tested after a verified Dubai road-network graph is prepared. Graph models may represent road connectivity more directly than H3 cells, but they require careful map matching and reliable road attributes. Severity-aware modeling could also be expanded beyond weighted summaries if severity labels are validated more deeply. Duration prediction would require verified clearance or resolution timestamps.
+
+The dashboard could be extended into a controlled batch-update workflow after institutional approval. Such a workflow would need data-update checks, model monitoring, retraining policy, API design, user-access controls, and clear guidance on how risk scores should and should not be used.
+
+Within the current thesis scope, the implemented pipeline shows that Dubai incident records can support explainable grid-time risk prediction. The strongest final claim is that the H3 resolution-8, 3-hour neighbor-feature XGBoost model gives a reproducible and interpretable baseline for ranking incident-risk zones in Dubai.

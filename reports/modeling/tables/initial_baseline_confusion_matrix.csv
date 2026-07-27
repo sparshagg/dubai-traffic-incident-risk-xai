@@ -1,0 +1,17 @@
+model,actual,predicted,count
+Historical risk,0,0,410564
+Historical risk,0,1,72086
+Historical risk,1,0,33438
+Historical risk,1,1,95305
+Logistic Regression,0,0,410620
+Logistic Regression,0,1,72030
+Logistic Regression,1,0,33409
+Logistic Regression,1,1,95334
+Random Forest,0,0,411759
+Random Forest,0,1,70891
+Random Forest,1,0,33210
+Random Forest,1,1,95533
+XGBoost,0,0,411221
+XGBoost,0,1,71429
+XGBoost,1,0,32999
+XGBoost,1,1,95744

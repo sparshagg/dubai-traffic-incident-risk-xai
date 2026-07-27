@@ -1,0 +1,66 @@
+\chapter{Literature review matrix}
+
+This appendix provides the full citation-backed literature matrix used to support the review in Chapter 2. The main chapter keeps the synthesis compact; this appendix records the broader reviewed source base and how each source informed the thesis design.
+
+\begingroup
+\scriptsize
+\setlength{\tabcolsep}{3pt}
+\renewcommand{\arraystretch}{1.18}
+\begin{longtable}{|p{0.8cm}|p{2.4cm}|p{3.0cm}|p{3.2cm}|p{3.9cm}|}
+\caption{Literature survey for traffic incident-risk prediction and explainability}\label{tab:appendix_literature_matrix} \\
+\hline
+\textbf{Ref.} & \textbf{Study context} & \textbf{Target and spatial setup} & \textbf{Methods and evaluation} & \textbf{Use in this thesis} \\
+\hline
+\endfirsthead
+
+\multicolumn{5}{c}{\bfseries \tablename\ \thetable{} -- continued from previous page} \\
+\hline
+\textbf{Ref.} & \textbf{Study context} & \textbf{Target and spatial setup} & \textbf{Methods and evaluation} & \textbf{Use in this thesis} \\
+\hline
+\endhead
+
+\hline \multicolumn{5}{|r|}{Continued on next page} \\ \hline
+\endfoot
+
+\hline
+\endlastfoot
+
+\cite{aldah2010dubai} & Dubai road traffic crash thesis using crash and injury records. & Descriptive crash, casualty, and countermeasure analysis for Dubai. & Macro and micro crash analysis with injury and fatality measures. & Gives the local Dubai road-safety background and shows why Dubai needs context-specific analysis. \\ \hline
+\cite{abdelfatah2015dubai} & Dubai accident trends and causes from 2003 to 2012. & City-level accident, injury, fatality, and cause trends. & Descriptive statistics and trend analysis. & Shows the limits of aggregate trend studies and supports using incident-level data. \\ \hline
+\cite{abuzaid2024uae} & UAE road-user and traffic-safety variables. & Traffic-related safety/effect outcomes at UAE level. & Artificial neural network and statistical analysis. & Places AI-based traffic-safety work in the UAE context. \\ \hline
+\cite{alsaleh2026dubaihotspots} & Dubai Police traffic collision records from late 2024 to mid-2025. & Temporal patterns and severity-weighted hotspots from incident points. & Temporal analysis, chi-square tests, Cramer's V, Getis-Ord Gi*, and IDW. & Confirms that Dubai Police incident records can support spatial and temporal hotspot analysis. \\ \hline
+\cite{behboudi2024review} & Review of traffic accident analysis and prediction studies. & Accident occurrence, risk, severity, frequency, and duration across many settings. & Review of statistical ML, deep learning, and hybrid methods. & Positions the thesis within recent accident-prediction literature. \\ \hline
+\cite{kashifi2022grid} & Chicago crashes aggregated into regular spatial grids. & Grid-time crash occurrence or risk. & Hybrid deep model with AUC-style comparisons and feature analysis. & Main support for a grid-based crash-risk formulation. \\ \hline
+\cite{ren2017citywide} & Citywide accident records divided into urban regions. & Region-level accident risk over time. & Deep temporal modeling and comparisons with baselines. & Supports converting historical incidents into region/time risk labels. \\ \hline
+\cite{zhou2020riskoracle} & Citywide accident forecasting with road-network and traffic features. & Fine-grained accident risk and likely subregions. & Graph neural framework, zero-risk handling, multi-task learning, and forecasting metrics. & Shows why sparsity and hotspot ranking matter in citywide risk prediction. \\ \hline
+\cite{an2022hintnet} & Heterogeneous spatiotemporal accident datasets. & Accident risk or frequency across hierarchical regions. & Hierarchical knowledge-transfer network. & Supports the need to account for spatial heterogeneity between grid zones. \\ \hline
+\cite{chen2024urbanrisk} & Urban accident datasets with remote sensing, POI, weather, and region features. & Urban accident risk across regions and granularities. & Multi-view graph encoding, adaptive temporal attention, and hierarchical loss. & Supports temporal, historical, and neighborhood-style features while showing richer data options. \\ \hline
+\cite{saleh2022contextualvit} & Large-scale traffic accident datasets with contextual inputs. & Traffic accident risk forecasting. & Contextual Vision Transformer and baseline comparisons. & Advanced related work; contrasts with the thesis choice of simpler explainable tabular models. \\ \hline
+\cite{gao2023uncertainty} & Road-level accident prediction with road-network structure. & Road-level accident frequency, severity, or risk. & Probabilistic graph neural network with uncertainty handling. & Supports future road-network extensions and uncertainty discussion. \\ \hline
+\cite{kim2024sstgcn} & Seoul road-level and minute-level accident-risk dataset. & Road-level accident risk at high temporal resolution. & Sequential spatiotemporal graph convolutional network. & Shows why road-level prediction needs verified road-network data beyond the current incident snapshot. \\ \hline
+\cite{ogungbire2026weather} & Weather-related crash forecasting using grid cells and external covariates. & Future crash risk or count in spatial grids. & Ensembled ConvLSTM with weather, traffic, and road data. & Supports optional weather and road-feature extension after the first incident-only model. \\ \hline
+\cite{khulbe2019severe} & Accident data with spatial and temporal features. & Severe accident classification or modeling. & Machine-learning models using location and time features. & Supports the value of spatial and temporal feature engineering. \\ \hline
+\cite{kalair2021duration} & Non-recurrent traffic incident duration data. & Dynamic incident-duration or hazard prediction. & Interpretable hazard-based models with Shapley-style explanations. & Clarifies that duration prediction needs clearance-time fields not yet confirmed in the Dubai data. \\ \hline
+\cite{grigorev2022bilevel} & Traffic incident duration data with contextual variables. & Incident duration prediction. & Bi-level ML framework with outlier handling and feature optimization. & Supports non-recurrent incident terminology and future duration extensions. \\ \hline
+\cite{grigorev2024sydney} & Sydney metropolitan traffic incident records. & Incident duration prediction and factor explanation. & XGBoost, LightGBM, and SHAP-style interpretation. & Supports tree-based incident analytics with explanation methods. \\ \hline
+\cite{grigorev2022textencoding} & Incident descriptions plus traffic flow data. & Incident duration prediction. & Text encoding with ML, autoencoder, and LSTM-based components. & Supports parsing the Dubai \texttt{acci\_name} field as a useful categorical signal. \\ \hline
+\cite{parsa2019realtime} & Expressway accident detection from traffic, weather, and congestion data. & Real-time accident versus non-accident detection. & LSTM, GRU, SMOTE, AUC, detection rate, and false-alarm rate. & Adjacent evidence that streaming traffic data can improve incident analytics, but outside the current open-data scope. \\ \hline
+\cite{han2026secondary} & Florida freeway crash and traffic-flow data. & Secondary crash likelihood. & Hybrid ensemble and false-alarm/identification metrics. & Future-work reference for secondary incident management. \\ \hline
+\cite{chen2025secondarygan} & Secondary crash data with dynamic and static variables. & Secondary crash occurrence and spatiotemporal distribution. & GAN and transformer framework for imbalance and sequence modeling. & Supports discussion of rare-event imbalance, but is too complex for the first Dubai model. \\ \hline
+\cite{rifat2024explainable} & Dhaka crash database, 2017 to 2022. & Fatal versus non-fatal crash outcome. & Multiple ML models with SHAP global and local explanations. & Core example of explainable traffic-safety modeling with tree-based methods. \\ \hline
+\cite{sufian2023severity} & UK road traffic accident severity data. & Accident severity prediction and analysis. & ML, econometric methods, time-series analysis, and SHAP. & Supports severity-aware secondary analysis and XAI for road safety. \\ \hline
+\cite{castellani2025severity} & Crash-severity data with crash and contextual features. & Crash severity prediction. & Feature selection, AutoML-style modeling, and SHAP. & Supports transparent feature selection before final model explanation. \\ \hline
+\cite{chakraborty2021severity} & Traffic crash injury severity dataset. & Injury severity classification and causal factor analysis. & Random Forest, XGBoost, DNN, and factor analysis. & Supports interpreting roadway, vehicle, and temporal factors in safety models. \\ \hline
+\cite{salih2023xai} & General XAI methods review. & No traffic-specific target. & Conceptual comparison of SHAP and LIME. & Helps justify SHAP while acknowledging LIME as a comparator. \\ \hline
+\cite{nobin2025starn} & FARS and ARI-BUET accident severity datasets. & Severity prediction with spatial and temporal graph attention. & STARN-GAT, macro F1, ROC-AUC, and recall. & Future-work support for graph-based severity extensions. \\ \hline
+\cite{bibb2025severity} & Large accident-severity dataset and Texas subset. & Accident severity classification. & Autoencoder and dense neural network with cross-validation. & Contrasts deep severity classification with the thesis focus on explainable tabular risk models. \\ \hline
+\cite{lundberg2017shap} & General model-explanation framework. & Any supervised model prediction. & Shapley additive explanations. & Main method used for global and local explanations. \\ \hline
+\cite{ribeiro2016lime} & General local explanation method for black-box models. & Any black-box classifier prediction. & Comparator to SHAP for local prediction explanation. \\ \hline
+\cite{chen2016xgboost} & Scalable boosted-tree learning system. & General structured supervised learning. & Regularized gradient boosting and benchmark comparisons. & Justifies XGBoost as a candidate model for the grid/time table. \\ \hline
+\cite{ke2017lightgbm} & Efficient gradient-boosted decision-tree framework. & General large-scale supervised learning. & Gradient-based one-side sampling and exclusive feature bundling. & Candidate future model for large tabular incident-risk data. \\ \hline
+\cite{saito2015prauc} & Imbalanced binary-classification evaluation. & General rare-positive classification. & ROC and precision-recall comparison. & Justifies PR-AUC and recall for incident-risk evaluation. \\ \hline
+\cite{chawla2002smote} & General imbalanced classification. & Minority-class classification. & Synthetic minority over-sampling. & Optional imbalance reference if resampling is tested later. \\ \hline
+\cite{getis1992distance} & Spatial association statistics. & Spatial clustering and hotspot detection. & Distance-based Getis-Ord statistics. & Foundation for hotspot analysis and comparison with predictive hotspots. \\ \hline
+\cite{ord1995local} & Local spatial autocorrelation statistics. & Local clustering and hot/cold spot detection. & Supports severity-aware hotspot maps if included as secondary analysis. \\ \hline
+\end{longtable}
+\endgroup

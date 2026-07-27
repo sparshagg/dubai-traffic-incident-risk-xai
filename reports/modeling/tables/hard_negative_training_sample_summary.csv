@@ -1,0 +1,3 @@
+sample_id,row_count,positive_rows,negative_rows,hard_negative_rows,random_negative_rows,positive_rate,notes
+current_random_negative_sample,1000000,296022,703978,0,703978,0.296022,"Existing sampled training table with deterministic 1,000,000-row cap."
+hard_negative_sample,1000000,360278,639722,447805,191917,0.360278,"All training positives plus 70/30 hard/random negatives; mined from 20,462,302 training negatives."

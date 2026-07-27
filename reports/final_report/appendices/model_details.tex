@@ -1,0 +1,226 @@
+\chapter{Model, data, and dashboard details}
+
+This appendix records technical details that support the main chapters. The main report explains the research story; this appendix keeps the exact setup, feature list, metric definitions, and dashboard notes in one place.
+
+\section{Data-preparation audit summary}
+
+\begin{table}[H]
+\centering
+\caption{Data-preparation audit summary}
+\label{tab:appendix_data_audit_summary}
+\small
+\begin{tabularx}{\textwidth}{L{0.36\textwidth}Y}
+\toprule
+\textbf{Audit item} & \textbf{Final value or decision} \\
+\midrule
+Raw row count & 720,155 incident-level records. \\
+Raw incident period & 13 August 2018 08:17:21 to 1 June 2026 14:09:45. \\
+Raw checksum & SHA-256 recorded in Chapter 3. \\
+Unique raw category strings & 233. \\
+Normalized category join keys & 226, because seven spacing or hyphen variants collapse during normalized joining. \\
+Category exclusions & 426 rows excluded from category-level EDA because they are cancelled/admin labels or garbled source strings. \\
+Category/temporal EDA rows & 719,729. \\
+Valid normalized coordinates & 717,868 rows. \\
+Map-usable EDA rows & 717,615 rows after category and coordinate filtering. \\
+Unknown severity handling & Unknown severity is retained for incident occurrence but assigned severity weight 0 in weighted sums. \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+\section{Final spatial and temporal setup}
+
+\begin{table}[H]
+\centering
+\caption{Final modeling setup}
+\label{tab:appendix_final_setup}
+\small
+\begin{tabularx}{\textwidth}{L{0.34\textwidth}Y}
+\toprule
+\textbf{Item} & \textbf{Value} \\
+\midrule
+Spatial scope & Inside-Dubai H3 cells only \\
+H3 resolution & 8 \\
+Time window & 3 hours \\
+Inside-Dubai cells & 1,305 \\
+Training windows & Window index 0 to 15,955 \\
+Validation windows & Window index 15,956 to 19,374 \\
+Test windows & Window index 19,375 to 22,794 \\
+Validation candidate rows & 4,461,795 \\
+Test candidate rows & 4,463,100 \\
+Test positive cell/windows & 108,224 \\
+Test incidents & 115,298 \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+\section{Final feature list}
+
+The final XGBoost model uses 23 input features before one-hot encoding of categorical variables.
+
+\scriptsize
+\begin{longtable}{L{0.34\textwidth}L{0.56\textwidth}}
+\caption{Final neighbor-feature XGBoost inputs}
+\label{tab:appendix_final_features}\\
+\toprule
+\textbf{Feature} & \textbf{Meaning} \\
+\midrule
+\endfirsthead
+\toprule
+\textbf{Feature} & \textbf{Meaning} \\
+\midrule
+\endhead
+Hour block & 3-hour block of the day. \\
+Day of week & Day of week for the prediction window. \\
+Weekend flag & Whether the prediction window falls on a weekend. \\
+Month and year & Calendar month and year. \\
+Geo scope & Spatial-scope category retained for preprocessing consistency. \\
+Previous 3h same-cell incidents & Same-cell incident count in the immediately previous 3-hour window. \\
+Previous 24h same-cell incidents & Same-cell incident count in the previous 24 hours. \\
+Previous 7d same-cell incidents & Same-cell incident count in the previous 7 days. \\
+Previous 24h same-cell severity sum & Same-cell known-severity weighted sum in the previous 24 hours. \\
+Previous 7d same-cell severity sum & Same-cell known-severity weighted sum in the previous 7 days. \\
+Historical cell-hour risk & Train-period empirical risk for the H3 cell and hour block. \\
+Historical cell risk & Train-period empirical risk for the H3 cell. \\
+Historical hour risk & Train-period empirical risk for the hour block. \\
+Historical global risk & Train-period global empirical risk. \\
+Inside-neighbor count & Number of ring-1 H3 neighbors retained inside Dubai. \\
+Previous 3h neighbor incidents & Neighboring-cell incident count in the immediately previous 3-hour window. \\
+Previous 24h neighbor incidents & Neighboring-cell incident count in the previous 24 hours. \\
+Previous 7d neighbor incidents & Neighboring-cell incident count in the previous 7 days. \\
+Previous 24h neighbor severity sum & Neighboring-cell known-severity weighted sum in the previous 24 hours. \\
+Previous 7d neighbor severity sum & Neighboring-cell known-severity weighted sum in the previous 7 days. \\
+Previous 24h active-neighbor cells & Number of neighboring cells with at least one incident in the previous 24 hours. \\
+Previous 7d active-neighbor cells & Number of neighboring cells with at least one incident in the previous 7 days. \\
+\bottomrule
+\end{longtable}
+\normalsize
+
+\section{Selected model settings}
+
+\begin{table}[H]
+\centering
+\caption{Selected XGBoost configuration}
+\label{tab:appendix_xgboost_settings}
+\small
+\begin{tabularx}{\textwidth}{L{0.34\textwidth}Y}
+\toprule
+\textbf{Parameter} & \textbf{Value} \\
+\midrule
+Model family & XGBoost binary classifier \\
+Training rows used & 1,000,000 deterministic sampled rows \\
+Negative sampling & Existing 5:1 sampled-negative training table, capped deterministically \\
+Number of estimators & 160 \\
+Maximum tree depth & 5 \\
+Learning rate & 0.07 \\
+Subsample & 0.85 \\
+Column sample by tree & 0.90 \\
+Minimum child weight & 1 \\
+Tree method & Histogram-based CPU trees \\
+Evaluation metric during training & Log loss \\
+Class imbalance handling & \texttt{scale\_pos\_weight} computed from the training sample \\
+Validation threshold & Selected on validation F1, then applied once to the test set \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+The tuned configuration selected by validation was not promoted because it reduced test PR-AUC, F1, and top-20 incident recall compared with the default neighbor-feature model.
+
+\section{Metric definitions}
+
+\begin{table}[H]
+\centering
+\caption{Metric definitions used in the report}
+\label{tab:appendix_metric_definitions}
+\small
+\begin{tabularx}{\textwidth}{L{0.24\textwidth}Y}
+\toprule
+\textbf{Metric} & \textbf{Meaning in this thesis} \\
+\midrule
+ROC-AUC & Probability that the model ranks a randomly chosen positive cell/window above a randomly chosen negative cell/window, across thresholds. \\
+PR-AUC & Area under the precision-recall curve. This is emphasized because positive cell/windows are rare in the full grid. \\
+Precision & Share of predicted positive cell/windows that are actually positive at the selected threshold. \\
+Recall & Share of actual positive cell/windows captured at the selected threshold. \\
+F1-score & Harmonic mean of precision and recall at the selected threshold. \\
+Brier score & Mean squared error between predicted probability and actual binary label; lower is better. \\
+ECE & Expected calibration error, measuring the average gap between predicted risk and observed rate across bins. \\
+Top-k recall & Share of positive cell/windows captured by the top-k ranked cells in each test window. \\
+Top-k precision & Share of the top-k ranked cells that are positive, aggregated across evaluated windows. \\
+Positive-window hit rate & Share of test windows with at least one positive where the top-k set captures at least one positive cell. \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+\section{Calibration and explanation settings}
+
+\begin{table}[H]
+\centering
+\caption{Calibration and explanation settings}
+\label{tab:appendix_explanation_settings}
+\small
+\begin{tabularx}{\textwidth}{L{0.34\textwidth}Y}
+\toprule
+\textbf{Item} & \textbf{Value} \\
+\midrule
+Calibration method selected & Sigmoid/Platt calibration \\
+Calibration fitting data & Validation predictions and labels only \\
+Dashboard risk value & Sigmoid-calibrated XGBoost probability \\
+Raw validation threshold & 0.826884 \\
+Calibrated threshold & 0.079937 \\
+SHAP model explained & Final default neighbor-feature XGBoost model \\
+SHAP scale & XGBoost raw-margin scale \\
+SHAP background sample & 2,000 rows \\
+SHAP global explanation sample & 10,000 deterministic full-grid test candidates \\
+LIME background sample & 2,000 rows \\
+Local explanation cases & High-risk true positive, high-risk false positive, low-score false negative, low-risk true negative \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+SHAP and LIME explain model behaviour. They do not establish causal effects of traffic, road, or temporal conditions.
+
+\section{Completed experiment coverage}
+
+\begin{table}[H]
+\centering
+\caption{Experiment coverage in the final report}
+\label{tab:appendix_experiment_coverage}
+\scriptsize
+\begin{tabularx}{\textwidth}{L{0.25\textwidth}Y Y}
+\toprule
+\textbf{Experiment} & \textbf{Question answered} & \textbf{Final decision} \\
+\midrule
+Sampled-negative baseline & Does the end-to-end supervised pipeline train and score models correctly? & Kept as a pipeline check. \\
+Inside-Dubai full-grid evaluation & How do models perform on the true inside-Dubai validation/test denominator? & Used as the main model-selection basis. \\
+Historical-risk audit & Are historical features useful, and do they create material training-time leakage? & Historical priors retained; expanding-history result was stable. \\
+H3/time sensitivity & Is the H3-8, 3-hour setting defensible? & H3-8 and 3-hour windows retained as the best balance. \\
+Neighbor-lag features & Does adjacent-cell recent history improve the model? & Promoted into the final model path. \\
+Hard-negative training & Does a 70/30 hard-negative sample improve the final model? & Rejected because full-grid PR-AUC and top-k capture fell. \\
+XGBoost tuning & Does validation-selected tuning improve the untouched test result? & Rejected because the default neighbor-feature model remained stronger. \\
+Calibration & Can risk scores be made more reliable for dashboard display? & Sigmoid calibration promoted for dashboard risk values. \\
+SHAP/LIME & Can the selected model be explained globally and locally? & SHAP retained as main explanation method; LIME retained as supporting local check. \\
+Dashboard & Can the result be inspected as where, when, and why? & Implemented as rolling replay with an English dashboard map and SHAP reasons. \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+\section{Dashboard reproducibility notes}
+
+\begin{table}[H]
+\centering
+\caption{Dashboard implementation summary}
+\label{tab:appendix_dashboard_summary}
+\small
+\begin{tabularx}{\textwidth}{L{0.32\textwidth}Y}
+\toprule
+\textbf{Item} & \textbf{Dashboard setting} \\
+\midrule
+Application stack & Streamlit for the app shell, PyDeck for MapTiler risk maps, and Plotly for charts. \\
+Main view & Rolling replay on complete observed days before the 1 June 2026 data cutoff. \\
+Map layer & H3 resolution-8 polygons over a MapTiler English-language map. \\
+Displayed risk value & Sigmoid-calibrated XGBoost probability. \\
+Explanation method in dashboard & SHAP top reasons and local contribution chart. \\
+Runtime data design & Compact precomputed dashboard files; the app does not load the raw 720,155-row file or the full 4.46 million-row test matrix during interaction. \\
+Forecast limitation & Dates after the cutoff require updated incident records so recent same-cell and neighboring lag features can be recomputed. \\
+\bottomrule
+\end{tabularx}
+\end{table}

@@ -1,0 +1,196 @@
+\documentclass[12pt,a4paper]{report}
+
+\usepackage{iftex}
+\ifPDFTeX
+  \usepackage[T1]{fontenc}
+  \usepackage[utf8]{inputenc}
+  \usepackage{lmodern}
+\else
+  \usepackage{fontspec}
+  \setmainfont[
+    Path=/usr/local/texlive/2026/texmf-dist/fonts/opentype/public/lm/,
+    UprightFont={lmroman10-regular.otf},
+    BoldFont={lmroman10-bold.otf},
+    ItalicFont={lmroman10-italic.otf},
+    BoldItalicFont={lmroman10-bolditalic.otf}
+  ]{Latin Modern Roman}
+  \newfontfamily\arabicfont[
+    Path=/System/Library/Fonts/Supplemental/,
+    UprightFont={Arial Unicode.ttf}
+  ]{Arial Unicode}
+\fi
+
+\usepackage[a4paper,left=30mm,right=25mm,top=25mm,bottom=25mm]{geometry}
+\usepackage{amsmath,amssymb}
+\usepackage{array}
+\usepackage{booktabs}
+\usepackage{caption}
+\usepackage{float}
+\usepackage{graphicx}
+\usepackage{longtable}
+\usepackage{microtype}
+\usepackage{placeins}
+\usepackage{tabularx}
+\usepackage{xcolor}
+\usepackage[hidelinks]{hyperref}
+\usepackage{cite}
+
+\graphicspath{{../../thesis_report/figures/}{../eda/figures/}{../modeling/figures/}{../dashboard/screenshots/}}
+\setcounter{tocdepth}{2}
+
+\newcolumntype{Y}{>{\raggedright\arraybackslash}X}
+\newcolumntype{L}[1]{>{\raggedright\arraybackslash}p{#1}}
+\newcommand{\thesistitle}{Explainable AI for Non-Recurrent Traffic Incident Risk Prediction in Dubai}
+\newcommand{\studentname}{Sparsh Aggarwal}
+\newcommand{\studentid}{2022A7TS0279U}
+\newcommand{\studentdiscipline}{Computer Science}
+\newcommand{\supervisor}{Dr.\ Sujala D.\ Shetty}
+\newcommand{\supervisordesignation}{Professor, Department of Computer Science}
+\newcommand{\supervisorsecondarydesignation}{Associate Dean, Practice School and Industry Engagement}
+\newcommand{\director}{Dr.\ Souri Banerjee}
+\newcommand{\outgoingassociatedean}{Dr.\ A.\ Somasundaram}
+\newcommand{\incomingassociatedean}{Dr.\ Tamizharasan Periyasamy}
+\newcommand{\incominghod}{Dr.\ Pranav M.\ Pawar}
+\renewcommand{\bibname}{References}
+
+\begin{document}
+
+\begin{titlepage}
+    \centering
+    \vspace*{1cm}
+    {\large THESIS REPORT}\\[0.5cm]
+    {\large ON}\\[1cm]
+    {\Large \textbf{\MakeUppercase{\thesistitle}}}\\[1cm]
+    {\large Submitted in partial fulfillment of the requirements for}\\[0.2cm]
+    {\large BITS F423T THESIS}\\[0.8cm]
+    {\large BY}\\[0.6cm]
+    {\large \textbf{\studentname}}\\[0.2cm]
+    {\large \textbf{ID NO \studentid}}\\[1.2cm]
+    {\large Under the supervision of}\\[0.4cm]
+    {\large \textbf{\supervisor}}\\[0.1cm]
+    {\large \supervisordesignation}\\[0.1cm]
+    {\large \supervisorsecondarydesignation}\\[1cm]
+    \vfill
+    \IfFileExists{../../thesis_report/figures/university_logo.png}{\includegraphics[width=0.24\textwidth]{../../thesis_report/figures/university_logo.png}\\[0.6cm]}{}
+    {\large ACADEMIC RESEARCH DIVISION}\\[0.25cm]
+    {\large BIRLA INSTITUTE OF TECHNOLOGY AND SCIENCE, PILANI}\\[0.2cm]
+    {\large DUBAI CAMPUS, DUBAI, U.A.E.}\\[0.7cm]
+    {\large June 2026 - July 2026}
+\end{titlepage}
+
+\pagenumbering{roman}
+
+\newpage
+\thispagestyle{plain}
+\begin{center}
+    \large \textbf{Summer Term, Academic Year 2025-26}\\
+    \textbf{BITS Pilani, Dubai Campus}\\
+    \textbf{Dubai International Academic City, Dubai, U.A.E.}
+\end{center}
+\vspace{0.8cm}
+\begin{tabular}{@{}ll}
+    \textbf{Course Title} & : Thesis \\
+    \textbf{Course Number} & : BITS F423T \\
+    \textbf{Report Type} & : Final thesis report \\
+    \textbf{Date of Submission} & : 31 July 2026 \\
+\end{tabular}
+\vspace{1cm}
+\begin{center}
+    \textbf{Title of the Project}\\[0.2cm]
+    \Large \textbf{\thesistitle}
+\end{center}
+\vspace{1.2cm}
+\begin{tabularx}{\textwidth}{@{}L{0.32\textwidth}Y@{}}
+    \textbf{Student ID Number} & : \studentid \\
+    \textbf{Student Name} & : \studentname \\
+    \textbf{Student Discipline} & : \studentdiscipline \\
+    \\
+    \textbf{Supervisor Name} & : \supervisor \\
+    \textbf{Supervisor Designation} & : \supervisordesignation; \supervisorsecondarydesignation \\
+\end{tabularx}
+
+\vfill
+\noindent
+\begin{tabular}{p{0.45\textwidth} p{0.45\textwidth}}
+    \rule{4cm}{0.4pt} & \rule{4cm}{0.4pt} \\
+    \small \textbf{Student Signature} & \small \textbf{Supervisor Signature}
+\end{tabular}
+
+\chapter*{Acknowledgements}
+\addcontentsline{toc}{chapter}{Acknowledgements}
+I thank \director, Director of BITS Pilani Dubai Campus, for providing the academic environment and institutional support needed to undertake this thesis.
+
+I thank \outgoingassociatedean, outgoing Associate Dean, Academic Undergraduate Studies Division, BITS Pilani Dubai Campus, for the academic coordination and guidance connected with the thesis course. I also thank \incomingassociatedean, Associate Dean, Academic Undergraduate Studies Division, for continuing the academic coordination of the thesis process.
+
+I am grateful to \supervisor, my thesis supervisor, for guiding the direction of this work and for helping me keep the topic practical, data-driven, and research focused.
+
+I acknowledge Dr.\ Sujala D.\ Shetty's role as outgoing Head of Department (Computer Science), and I also acknowledge \incominghod, incoming Head of Department (Computer Science), for the continued academic leadership of the department.
+
+I also thank the faculty and staff members who supported access to academic resources and helped with thesis-related requirements during the summer term.
+
+\vspace{1cm}
+\noindent \textbf{\studentname}\\
+\textbf{\studentid}
+
+\chapter*{Certificate}
+\addcontentsline{toc}{chapter}{Certificate}
+This is to certify that the thesis entitled, \textit{\thesistitle}, has been submitted by \studentname, ID No. \studentid. The work has been carried out under my supervision in partial fulfillment of the requirements for BITS F423T Thesis.
+
+\vspace{2cm}
+\noindent Date:\hfill Signature of the Supervisor
+
+\vspace{1.2cm}
+\noindent \hfill \supervisor
+
+\chapter*{List of symbols and abbreviations}
+\addcontentsline{toc}{chapter}{List of symbols and abbreviations}
+\begin{longtable}{L{0.24\textwidth}L{0.68\textwidth}}
+API & Application programming interface. \\
+ECE & Expected calibration error. \\
+H3 & Hexagonal hierarchical geospatial index system. \\
+LIME & Local interpretable model-agnostic explanations. \\
+ML & Machine learning. \\
+MCE & Maximum calibration error. \\
+PR-AUC & Area under the precision-recall curve. \\
+ROC-AUC & Area under the receiver operating characteristic curve. \\
+SHAP & Shapley additive explanations. \\
+XGBoost & Extreme Gradient Boosting. \\
+XAI & Explainable artificial intelligence. \\
+\end{longtable}
+
+\chapter*{Thesis abstract}
+\addcontentsline{toc}{chapter}{Thesis abstract}
+This thesis develops an explainable machine-learning framework for non-recurrent traffic incident risk prediction in Dubai. The work uses an open Dubai Police incident dataset from Dubai's Data and Statistics portal. The frozen local snapshot contains 720,155 incident-level records from 13 August 2018 to 1 June 2026. The raw records were audited, translated from Arabic category labels, checked for coordinate-order errors, and converted into H3 grid cells and 3-hour time windows.
+
+The prediction task is defined as a binary grid-time problem: for each inside-Dubai H3 cell and each 3-hour window, the model predicts whether at least one incident will occur. A chronological split is used so that later windows are not used during training. The stronger evaluation uses a full inside-Dubai grid with 1,305 cells, 4,463,100 test candidate cell/windows, and 108,224 positive test cell/windows. Historical risk, Logistic Regression, Random Forest, and XGBoost models were compared. The final selected model is the default XGBoost classifier with same-cell lag features, historical risk priors, and ring-1 neighboring-cell lag features.
+
+Neighboring-cell lag features improve full-grid PR-AUC from 0.0967 to 0.0992 and F1-score from 0.1615 to 0.1645 compared with the same XGBoost setup without neighbor features. The selected model captures 10,416 incidents in the top-20 ranked cells per test window. A 70/30 hard-negative training strategy and a tuned XGBoost configuration were tested but were not promoted because they reduced the untouched full-grid test result. Sigmoid calibration was selected for dashboard display because it reduced Brier score from 0.2127 to 0.0227 while preserving ranking metrics. SHAP is used as the main explanation method, and LIME is used as a selected local comparison. The final dashboard demonstrates the model through a rolling replay with an English dashboard map, ranked risk zones, and SHAP reasons for selected zones.
+
+\tableofcontents
+\listoffigures
+\listoftables
+\newpage
+
+\pagenumbering{arabic}
+
+\include{chapters/01_introduction}
+\include{chapters/02_literature_review}
+\include{chapters/03_data_and_study_design}
+\include{chapters/04_methodology}
+\include{chapters/05_results_and_discussion}
+\include{chapters/06_dashboard}
+\include{chapters/07_conclusion}
+
+\appendix
+\include{appendices/literature_matrix}
+\include{appendices/model_details}
+\include{appendices/research_paper_attachment}
+
+\bibliographystyle{ieeetr}
+\bibliography{../../references}
+
+\chapter*{List of publications or conference presentations}
+\addcontentsline{toc}{chapter}{List of publications or conference presentations}
+No external publication or conference presentation has been completed at the time of this report. A research-paper draft based on the thesis work is attached in Appendix C for the course submission requirement.
+
+\end{document}

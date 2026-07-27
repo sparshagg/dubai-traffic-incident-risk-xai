@@ -1,0 +1,621 @@
+\chapter{Results and discussion}
+
+This chapter presents the final experimental story. The first sampled-negative models showed that the pipeline worked, but the main evidence comes from inside-Dubai full-grid validation and test scoring. The final model path is selected only after checking the historical-risk features, H3/time-window choices, neighboring-cell lag features, hard-negative training, XGBoost tuning, calibration, and explainability.
+
+\begin{table}[H]
+\centering
+\caption{Completed experiments and final decisions}
+\label{tab:completed_experiments_decisions}
+\footnotesize
+\begin{tabularx}{\textwidth}{L{0.28\textwidth}L{0.30\textwidth}Y}
+\toprule
+\textbf{Experiment} & \textbf{Purpose} & \textbf{Decision in final report} \\
+\midrule
+Sampled-negative baseline & Check the end-to-end supervised-learning pipeline with historical risk, Logistic Regression, Random Forest, and XGBoost. & Kept as an initial pipeline check, not the final performance denominator. \\
+Inside-Dubai full-grid evaluation & Evaluate all inside-Dubai H3 cells in validation and test windows. & Used as the main model-selection evidence. XGBoost was strongest among the first full-grid models. \\
+Historical-risk audit & Test whether historical-risk features dominate or create training-time leakage. & Kept historical priors. Expanding-history results were almost unchanged, reducing leakage concern. \\
+H3/time-window sensitivity & Compare H3-7, H3-8, H3-9 and 1-hour, 3-hour, 6-hour windows. & Kept H3-8 with 3-hour windows as the main balance of detail, sparsity, and dashboard practicality. \\
+Neighboring-cell lag features & Test whether ring-1 H3 neighbor history improves prediction. & Promoted. Neighbor lags improved PR-AUC, F1, and top-20 incident capture modestly. \\
+Hard-negative training & Test whether high-scoring training negatives improve the selected model. & Rejected. It reduced full-grid PR-AUC, F1, and hotspot capture. \\
+XGBoost tuning & Tune the neighbor-feature XGBoost model using validation-only selection. & Rejected. The tuned model did not improve the untouched test result. \\
+Sigmoid calibration & Make displayed risk scores more reliable for the dashboard. & Promoted for probability display. Ranking metrics were preserved and Brier score improved. \\
+SHAP/LIME explanations & Explain the final model globally and locally. & SHAP is the main explanation method. LIME is retained as a supporting local comparison. \\
+Dashboard & Present where, when, and why the model ranks zones as risky. & Implemented as a rolling replay using the final neighbor-feature XGBoost model, English dashboard map, and SHAP reasons. \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+\section{Initial sampled-negative baseline}
+
+The first baseline used the 5:1 sampled model table. It compared historical risk, Logistic Regression, Random Forest, and XGBoost on the initial modeling population. These results were useful for checking the end-to-end pipeline, but they are not the final evaluation denominator because the test negatives were sampled.
+
+This stage answered a practical question: after the data audit, H3 conversion, feature engineering, and chronological split, can the supervised-learning pipeline train and score models without leakage columns? The sampled-negative table is useful for this purpose because it contains all positive rows and enough negative rows to train the first models. It is not the final performance claim because the negative class is artificially reduced.
+
+\begin{table}[H]
+\centering
+\caption{Initial sampled-negative baseline result}
+\label{tab:initial_sampled_negative_baseline}
+\small
+\begin{tabular}{lrrrr}
+\toprule
+\textbf{Model} & \textbf{ROC-AUC} & \textbf{PR-AUC} & \textbf{Recall} & \textbf{F1} \\
+\midrule
+Historical risk & 0.8850 & 0.6387 & 0.7403 & 0.6437 \\
+Logistic Regression & 0.8847 & 0.6442 & 0.7405 & 0.6439 \\
+Random Forest & 0.8904 & 0.6542 & 0.7420 & 0.6473 \\
+XGBoost & 0.8899 & 0.6544 & 0.7437 & 0.6471 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+The sampled-negative PR-AUC values are much higher than the full-grid PR-AUC values because the sampled table contains many fewer non-incident cell/windows than the real full grid. This is why the report treats the sampled-negative baseline as a pipeline check rather than the final performance claim.
+
+The tree-based models are slightly stronger than the historical and linear baselines in the sampled table, but the gap is not large. This already suggested that historical location/time risk is a strong signal. It also showed that the final evaluation needed a harder denominator. A good score on sampled negatives does not prove that the model can rank all inside-Dubai cells in later windows.
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.86\textwidth]{initial_baseline_roc_curve.png}
+\caption{ROC curves for the initial sampled-negative baseline.}
+\label{fig:initial_baseline_roc_curve_final}
+\end{figure}
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.86\textwidth]{initial_baseline_pr_curve.png}
+\caption{Precision-recall curves for the initial sampled-negative baseline.}
+\label{fig:initial_baseline_pr_curve_final}
+\end{figure}
+
+\FloatBarrier
+
+\section{Inside-Dubai full-grid evaluation}
+
+The main evaluation uses the inside-Dubai H3 resolution-8, 3-hour full grid. The test period contains 4,463,100 candidate cell/windows, of which 108,224 are positive. The base incident-positive rate is therefore 2.42\%. This rare-event setting makes PR-AUC and top-k hotspot metrics more meaningful than accuracy.
+
+\begin{table}[H]
+\centering
+\caption{Inside-Dubai full-grid baseline result}
+\label{tab:final_full_grid_baseline}
+\small
+\begin{tabular}{lrrrrr}
+\toprule
+\textbf{Model} & \textbf{ROC-AUC} & \textbf{PR-AUC} & \textbf{Precision} & \textbf{Recall} & \textbf{F1} \\
+\midrule
+Historical risk & 0.7990 & 0.0882 & 0.1063 & 0.2679 & 0.1522 \\
+Logistic Regression & 0.7995 & 0.0932 & 0.1087 & 0.2792 & 0.1565 \\
+Random Forest & 0.8062 & 0.0954 & 0.1133 & 0.2721 & 0.1599 \\
+XGBoost & 0.8067 & 0.0967 & 0.1165 & 0.2630 & 0.1615 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+XGBoost is the strongest model in the first full-grid comparison. The improvement over historical risk is modest but consistent: PR-AUC improves from 0.0882 to 0.0967, and F1 improves from 0.1522 to 0.1615. This is expected because historical cell/time risk is already a strong predictor for this task.
+
+The full-grid result is much more conservative than the sampled-negative result. Test PR-AUC falls from about 0.65 in the sampled table to about 0.10 in the full-grid setting. This does not mean the model failed. It means the evaluation denominator changed to the true city grid, where most cell/windows do not contain incidents. In this setting, even a small PR-AUC improvement over historical risk is meaningful if it also improves top-k hotspot ranking.
+
+\begin{table}[H]
+\centering
+\caption{Inside-Dubai full-grid top-20 hotspot ranking}
+\label{tab:final_full_grid_top20}
+\footnotesize
+\begin{tabular}{lrrrr}
+\toprule
+\textbf{Model} & \textbf{Pos. cells} & \textbf{Prec.@20} & \textbf{Hit@20} & \textbf{Incidents} \\
+\midrule
+Historical risk & 8,847 & 0.1293 & 0.9106 & 10,043 \\
+Logistic Regression & 8,994 & 0.1315 & 0.9103 & 10,227 \\
+Random Forest & 8,946 & 0.1308 & 0.9122 & 10,186 \\
+XGBoost & 9,049 & 0.1323 & 0.9183 & 10,281 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+The top-k result is a hotspot-ranking result, not a proof that every future incident can be located. It asks whether the highest-ranked cells in each test window contain incidents. XGBoost captures the most top-20 incidents in the first full-grid evaluation.
+
+The top-k comparison is especially important for defending the model. A traffic-risk dashboard is unlikely to ask a user to inspect all 1,305 cells in every 3-hour window. It is more realistic to rank cells and inspect the highest-risk zones. The top-20 result shows that XGBoost captures 10,281 incidents in the highest-ranked cells across the test period, compared with 10,043 for historical risk. The gain is modest, but it is consistent with the PR-AUC and F1 improvement.
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.88\textwidth]{final_full_grid_model_comparison.png}
+\caption{Inside-Dubai full-grid model comparison}
+\label{fig:final_full_grid_model_comparison}
+\end{figure}
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.88\textwidth]{final_full_grid_topk_comparison.png}
+\caption{Inside-Dubai full-grid top-k hotspot comparison}
+\label{fig:final_full_grid_topk_comparison}
+\end{figure}
+
+\FloatBarrier
+
+\section{Historical-risk feature audit}
+
+Because historical cell/time risk is expected to be strong, an audit was run to check whether model performance depends mainly on those features and whether the train-period historical priors create a leakage concern. The audit compares the full XGBoost feature set, an expanding-training-history variant, versions without historical-risk features, temporal-only features, and a historical-score-only baseline.
+
+\begin{table}[H]
+\centering
+\caption{Historical-risk feature audit}
+\label{tab:historical_risk_audit}
+\small
+\begin{tabular}{lrrrr}
+\toprule
+\textbf{Feature set} & \textbf{ROC-AUC} & \textbf{PR-AUC} & \textbf{Recall} & \textbf{F1} \\
+\midrule
+All features, train-period history & 0.8067 & 0.0967 & 0.2630 & 0.1615 \\
+All features, expanding train history & 0.8066 & 0.0963 & 0.2649 & 0.1613 \\
+No historical-risk features & 0.7757 & 0.0843 & 0.2761 & 0.1498 \\
+Temporal and lag only & 0.7760 & 0.0850 & 0.2713 & 0.1501 \\
+Temporal only & 0.5983 & 0.0311 & 0.4794 & 0.0615 \\
+Historical score only & 0.7990 & 0.0882 & 0.2679 & 0.1522 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+Removing historical-risk features reduces PR-AUC from 0.0967 to 0.0843 and F1 from 0.1615 to 0.1498. Historical priors therefore matter. The expanding-history check is almost identical to the train-period historical-prior result, which reduces the concern that the reported performance is an artifact of training-time historical-risk leakage.
+
+The audit also clarifies the role of the model. The XGBoost model is not discovering risk from calendar variables alone. Temporal-only features give PR-AUC 0.0311 and F1 0.0615, which is much weaker than the full model. Same-cell and lag features improve the result, but the long-term cell/hour historical prior remains central. This is reasonable for incident-risk prediction because road layout, land use, traffic generators, and reporting patterns are partly stable over time.
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.88\textwidth]{historical_risk_audit_model_comparison.png}
+\caption{Historical-risk feature audit result}
+\label{fig:historical_risk_audit_model_comparison}
+\end{figure}
+
+\FloatBarrier
+
+\section{H3 and time-window sensitivity checks}
+
+Sensitivity checks compare the main H3 resolution-8, 3-hour setting with H3 resolution 7 and 9, and with 1-hour and 6-hour windows at resolution 8. The comparison uses historical risk and XGBoost with a controlled training design.
+
+\begin{table}[H]
+\centering
+\caption{H3/time-window sensitivity result}
+\label{tab:h3_time_sensitivity}
+\small
+\begin{tabular}{lrrrrr}
+\toprule
+\textbf{Setting} & \textbf{Cells} & \textbf{Window} & \textbf{Model} & \textbf{Test base rate} & \textbf{PR-AUC} \\
+\midrule
+H3-7 & 216 & 3h & XGBoost & 0.1309 & 0.2192 \\
+H3-8 & 1,305 & 1h & XGBoost & 0.0084 & 0.0242 \\
+H3-8 & 1,305 & 3h & XGBoost & 0.0242 & 0.0564 \\
+H3-8 & 1,305 & 6h & XGBoost & 0.0465 & 0.0964 \\
+H3-9 & 8,579 & 3h & XGBoost & 0.0038 & 0.0132 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+The sensitivity results must be read with the positive rate. H3-7 and 6-hour windows have higher PR-AUC partly because they are coarser and make positive labels less rare. H3-9 and 1-hour windows are much sparser. H3-8 with 3-hour windows remains the main setting because it balances spatial detail, temporal detail, dashboard usability, and computational cost. It is also the setting used for the full-grid model selection and final SHAP/LIME explanation.
+
+The sensitivity check is therefore not a simple search for the largest PR-AUC. A coarser grid can look better because many incidents are merged into the same larger cell. A longer time window can look better because more incidents fall into each positive row. Those settings may be easier to predict but less useful for a map-based dashboard. H3-8 with 3-hour windows keeps a local spatial scale and a usable time scale while remaining computationally feasible.
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.88\textwidth]{h3_time_sensitivity_pr_auc.png}
+\caption{H3/time-window sensitivity PR-AUC comparison}
+\label{fig:h3_time_sensitivity_pr_auc}
+\end{figure}
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.88\textwidth]{h3_time_sensitivity_topk.png}
+\caption{H3/time-window sensitivity top-k comparison.}
+\label{fig:h3_time_sensitivity_topk_final}
+\end{figure}
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.88\textwidth]{h3_time_sensitivity_population.png}
+\caption{H3/time-window sensitivity population comparison.}
+\label{fig:h3_time_sensitivity_population_final}
+\end{figure}
+
+\FloatBarrier
+
+\section{Neighboring-cell lag feature experiment}
+
+A neighboring-cell feature experiment was added after the main full-grid evaluation. The purpose was to test whether recent incident activity in adjacent H3 cells improves prediction beyond the current same-cell temporal and historical-risk features. For each inside-Dubai H3 cell, ring-1 neighbors were obtained with \texttt{h3.grid\_disk(cell, 1)}. The center cell was excluded, and only inside-Dubai neighbors were retained. The inside-neighbor count ranges from 2 to 6, with a mean of 5.681.
+
+The added features are previous 3-hour, 24-hour, and 7-day neighboring incident counts; previous 24-hour and 7-day neighboring severity-weighted sums; and previous 24-hour and 7-day neighboring active-cell counts. These features use only windows before the target prediction window. Unknown-severity incidents remain in incident counts, while unknown severity contributes zero to the severity-weighted sums.
+
+\begin{table}[H]
+\centering
+\caption{Inside-Dubai full-grid result with neighboring H3 lag features}
+\label{tab:neighbor_lag_feature_metrics}
+\small
+\begin{tabular}{lrrrrr}
+\toprule
+\textbf{Model} & \textbf{ROC-AUC} & \textbf{PR-AUC} & \textbf{Precision} & \textbf{Recall} & \textbf{F1} \\
+\midrule
+Historical risk & 0.7990 & 0.0882 & 0.1063 & 0.2679 & 0.1522 \\
+XGBoost current features & 0.8067 & 0.0967 & 0.1165 & 0.2630 & 0.1615 \\
+XGBoost + neighbor lags & 0.8120 & 0.0992 & 0.1179 & 0.2720 & 0.1645 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+The neighboring-cell lag features give a modest but consistent improvement. PR-AUC increases by 0.0025, ROC-AUC increases by 0.0053, and F1-score increases by 0.0030 compared with the current XGBoost feature set. This suggests that nearby recent activity contains additional spatial signal, but the improvement is not large enough to change the interpretation that historical cell/time risk remains the dominant predictor.
+
+This result is useful because it improves the model without changing the thesis formulation. The target remains binary incident occurrence. The spatial unit remains H3 resolution 8. The validation and test periods remain full-grid and untouched. Only the feature set changes by adding information from adjacent cells in previous windows. Since the improvement is consistent across PR-AUC, F1, and top-k capture, the neighbor features are promoted into the final model path.
+
+\begin{table}[H]
+\centering
+\caption{Top-k hotspot ranking with neighboring H3 lag features}
+\label{tab:neighbor_lag_feature_topk}
+\small
+\begin{tabular}{lrrrr}
+\toprule
+\textbf{Model} & \textbf{k} & \textbf{Recall@k} & \textbf{Precision@k} & \textbf{Incident recall@k} \\
+\midrule
+Historical risk & 20 & 0.0817 & 0.1293 & 0.0871 \\
+XGBoost current features & 20 & 0.0836 & 0.1323 & 0.0892 \\
+XGBoost + neighbor lags & 20 & 0.0844 & 0.1336 & 0.0903 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+At top 20, the neighbor-feature model captures 9,138 positive cell/windows and 10,416 incidents, compared with 9,049 positive cell/windows and 10,281 incidents for the current XGBoost model. The gain is small, but it supports keeping neighboring-cell lag features as part of the final model-improvement path before tuning and calibration.
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.88\textwidth]{neighbor_lag_feature_model_comparison.png}
+\caption{Neighboring H3 lag feature model comparison}
+\label{fig:neighbor_lag_feature_model_comparison}
+\end{figure}
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.88\textwidth]{neighbor_lag_feature_topk_comparison.png}
+\caption{Neighboring H3 lag feature top-k comparison}
+\label{fig:neighbor_lag_feature_topk_comparison}
+\end{figure}
+
+\FloatBarrier
+
+\section{Hard-negative training sample experiment}
+
+After the neighboring-cell feature experiment, a hard-negative training sample was tested. The aim was to see whether the XGBoost model would improve if it learned from training-window cell/time pairs that looked risky to the current model but did not contain incidents. A deterministic miner model was first trained with the existing random-negative training sample. It then scored all full-grid training negatives. The final hard-negative sample kept all positive training rows and filled the remaining training budget with 70\% high-scoring hard negatives and 30\% random negatives. Validation and test remained full-grid and unchanged.
+
+\begin{table}[H]
+\centering
+\caption{Hard-negative and random-negative training sample composition}
+\label{tab:hard_negative_training_sample}
+\footnotesize
+\begin{tabular}{lrrrrr}
+\toprule
+\textbf{Sample} & \textbf{Rows} & \textbf{Pos.} & \textbf{Neg.} & \textbf{Hard neg.} & \textbf{Rand. neg.} \\
+\midrule
+Current random sample & 1,000,000 & 296,022 & 703,978 & 0 & 703,978 \\
+Hard-negative sample & 1,000,000 & 360,278 & 639,722 & 447,805 & 191,917 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\begin{table}[H]
+\centering
+\caption{Inside-Dubai full-grid result with hard-negative training}
+\label{tab:hard_negative_training_metrics}
+\footnotesize
+\begin{tabularx}{\textwidth}{L{0.34\textwidth}rrrrr}
+\toprule
+\textbf{Model} & \textbf{ROC-AUC} & \textbf{PR-AUC} & \textbf{Precision} & \textbf{Recall} & \textbf{F1} \\
+\midrule
+Historical risk & 0.7990 & 0.0882 & 0.1063 & 0.2679 & 0.1522 \\
+XGBoost neighbor random sample & 0.8120 & 0.0992 & 0.1179 & 0.2720 & 0.1645 \\
+XGBoost neighbor hard negatives & 0.6934 & 0.0487 & 0.0599 & 0.3333 & 0.1015 \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+The hard-negative sample did not improve the model. PR-AUC fell from 0.0992 to 0.0487, F1 fell from 0.1645 to 0.1015, and precision fell from 0.1179 to 0.0599. Recall increased, but the increase came with many more false positives. This is not a useful tradeoff for hotspot ranking.
+
+This failed experiment is still important. It shows that the thesis did not simply accept every added technique. Hard-negative mining is plausible for rare-event prediction because it gives the model difficult negative examples. In this dataset, however, the tested 70/30 hard-negative strategy appears too aggressive. It teaches the model that many historically risky-looking rows are negative, which reduces the model's ability to rank true future hotspots.
+
+\begin{table}[H]
+\centering
+\caption{Top-k hotspot ranking with hard-negative training}
+\label{tab:hard_negative_training_topk}
+\small
+\begin{tabular}{lrrrr}
+\toprule
+\textbf{Model} & \textbf{k} & \textbf{Recall@k} & \textbf{Precision@k} & \textbf{Incident recall@k} \\
+\midrule
+Historical risk & 20 & 0.0817 & 0.1293 & 0.0871 \\
+XGBoost neighbor random sample & 20 & 0.0844 & 0.1336 & 0.0903 \\
+XGBoost neighbor hard negatives & 20 & 0.0386 & 0.0610 & 0.0384 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+At top 20, the hard-negative model captures 4,427 incidents, compared with 10,416 for the random-sample neighbor-feature model. The likely reason is that the hard-negative sample over-emphasizes difficult high-risk-looking non-incident rows. That teaches the model to suppress scores in historically risky areas, which damages the ranking of true hotspots in the later test period. For the current thesis pipeline, the hard-negative strategy is therefore rejected.
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.88\textwidth]{hard_negative_training_model_comparison.png}
+\caption{Hard-negative training model comparison}
+\label{fig:hard_negative_training_model_comparison}
+\end{figure}
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.88\textwidth]{hard_negative_training_topk_comparison.png}
+\caption{Hard-negative training top-k comparison}
+\label{fig:hard_negative_training_topk_comparison}
+\end{figure}
+
+\FloatBarrier
+
+\section{XGBoost hyperparameter tuning experiment}
+
+After rejecting the hard-negative training sample, XGBoost hyperparameters were tuned for the neighbor-feature model while keeping the original sampled-negative training table. The search used 18 predeclared candidates over tree depth, learning rate, number of estimators, and minimum child weight. All candidates used the same training rows and the same neighbor-lag features. The selection rule used validation data only: highest validation PR-AUC, then validation top-20 incident recall for candidates within 0.001 PR-AUC, then validation F1.
+
+The selected candidate was \texttt{xgb\_tune\_12}, with maximum depth 5, learning rate 0.10, 240 estimators, and minimum child weight 10. It was selected because it was within 0.001 validation PR-AUC of the best candidate and had the strongest validation top-20 incident recall among that group.
+
+\begin{table}[H]
+\centering
+\caption{Selected XGBoost tuning configuration}
+\label{tab:xgboost_tuning_selected_config}
+\small
+\begin{tabular}{lrrrr}
+\toprule
+\textbf{Candidate} & \textbf{Depth} & \textbf{Learning rate} & \textbf{Estimators} & \textbf{Min child weight} \\
+\midrule
+\texttt{xgb\_tune\_12} & 5 & 0.10 & 240 & 10 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\begin{table}[H]
+\centering
+\caption{Inside-Dubai full-grid result after XGBoost tuning}
+\label{tab:xgboost_tuning_test_metrics}
+\small
+\begin{tabular}{lrrrrr}
+\toprule
+\textbf{Model} & \textbf{ROC-AUC} & \textbf{PR-AUC} & \textbf{Precision} & \textbf{Recall} & \textbf{F1} \\
+\midrule
+Historical risk & 0.7990 & 0.0882 & 0.1063 & 0.2679 & 0.1522 \\
+XGBoost neighbor default & 0.8120 & 0.0992 & 0.1179 & 0.2720 & 0.1645 \\
+XGBoost neighbor tuned & 0.8088 & 0.0976 & 0.1156 & 0.2710 & 0.1620 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+The tuned model did not improve the untouched test result. Test PR-AUC fell from 0.0992 to 0.0976 and F1 fell from 0.1645 to 0.1620. The difference is small, but it does not justify replacing the default neighbor-feature XGBoost model.
+
+The tuning result is a useful caution. The selected candidate was chosen using validation data only, so the procedure itself is valid. The untouched test result shows that the selected candidate does not generalize better than the default neighbor-feature model. This is why the final model is not the most complex or most tuned version. The report keeps the simpler default configuration because it performs slightly better on the final test period and is easier to defend.
+
+\begin{table}[H]
+\centering
+\caption{Top-k hotspot ranking after XGBoost tuning}
+\label{tab:xgboost_tuning_topk}
+\small
+\begin{tabular}{lrrrr}
+\toprule
+\textbf{Model} & \textbf{k} & \textbf{Recall@k} & \textbf{Precision@k} & \textbf{Incident recall@k} \\
+\midrule
+Historical risk & 20 & 0.0817 & 0.1293 & 0.0871 \\
+XGBoost neighbor default & 20 & 0.0844 & 0.1336 & 0.0903 \\
+XGBoost neighbor tuned & 20 & 0.0838 & 0.1327 & 0.0895 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+At top 20, the tuned model captures 10,323 incidents, compared with 10,416 for the default neighbor-feature XGBoost. The default model therefore remains the current final candidate for the calibration and dashboard stages.
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.88\textwidth]{xgboost_tuning_validation_pr_auc.png}
+\caption{XGBoost tuning validation PR-AUC by candidate}
+\label{fig:xgboost_tuning_validation_pr_auc}
+\end{figure}
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.88\textwidth]{xgboost_tuning_test_comparison.png}
+\caption{XGBoost tuning test comparison}
+\label{fig:xgboost_tuning_test_comparison}
+\end{figure}
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.88\textwidth]{xgboost_tuning_topk_comparison.png}
+\caption{XGBoost tuning top-k comparison}
+\label{fig:xgboost_tuning_topk_comparison}
+\end{figure}
+
+\FloatBarrier
+
+\section{XGBoost probability calibration experiment}
+
+The default neighbor-feature XGBoost model produces a probability-like score, but the raw score is not automatically a reliable incident probability. This matters for the dashboard because a map should not show an overconfident risk value if the model score is mainly useful for ranking hotspots. A calibration experiment was therefore run after tuning. The classifier, feature set, training sample, H3 resolution, 3-hour window size, and full-grid validation/test population were kept unchanged.
+
+Two post-processing calibration methods were tested. Sigmoid calibration fits a logistic calibration curve to validation-period predictions. Isotonic calibration fits a non-parametric monotonic curve. Both methods were fitted only on validation predictions and labels. The test period was used only for final reporting.
+
+\begin{table}[H]
+\centering
+\caption{XGBoost probability calibration result}
+\label{tab:xgboost_calibration_metrics}
+\small
+\begin{tabular}{lrrrrr}
+\toprule
+\textbf{Score} & \textbf{PR-AUC} & \textbf{F1} & \textbf{Brier score} & \textbf{Log loss} & \textbf{ECE} \\
+\midrule
+Uncalibrated & 0.0992 & 0.1645 & 0.2127 & 0.5953 & 0.3518 \\
+Sigmoid calibrated & 0.0992 & 0.1645 & 0.0227 & 0.0983 & 0.0013 \\
+Isotonic calibrated & 0.0976 & 0.1645 & 0.0227 & 0.0979 & 0.0013 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+The uncalibrated score is strongly overconfident as a probability. In the highest score bin, the mean raw predicted score is 0.8404 while the observed incident rate is 0.0990. After sigmoid calibration, the same high-risk bin has a mean predicted risk of 0.0939 and an observed incident rate of 0.0990. This is a much better dashboard risk value.
+
+\begin{table}[H]
+\centering
+\caption{Top-20 hotspot ranking after calibration}
+\label{tab:xgboost_calibration_topk}
+\footnotesize
+\begin{tabular}{lrrrr}
+\toprule
+\textbf{Score} & \textbf{Recall@20} & \textbf{Prec.@20} & \textbf{Hit@20} & \textbf{Incident recall@20} \\
+\midrule
+Uncalibrated & 0.0844 & 0.1336 & 0.9215 & 0.0903 \\
+Sigmoid calibrated & 0.0844 & 0.1336 & 0.9215 & 0.0903 \\
+Isotonic calibrated & 0.0847 & 0.1340 & 0.9202 & 0.0905 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+Sigmoid calibration is selected for dashboard probability display. It reduces the Brier score from 0.2127 to 0.0227 and reduces equal-frequency expected calibration error from 0.3518 to 0.0013, while leaving ROC-AUC, PR-AUC, F1-score, and top-k hotspot ranking unchanged. Isotonic calibration gives a slightly lower log loss and maximum calibration error, but it reduces PR-AUC from 0.0992 to 0.0976. Since the dashboard needs stable calibrated risk values without weakening the ranking metric, sigmoid calibration is the better final choice.
+
+The calibration result separates two ideas that are often confused. Ranking quality asks whether high-risk cells are placed above low-risk cells. Probability reliability asks whether the displayed score matches observed incident rates. The uncalibrated XGBoost model is acceptable for ranking but too confident as a probability. Sigmoid calibration fixes this for dashboard display without changing the hotspot ranking.
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.82\textwidth]{xgboost_calibration_reliability.png}
+\caption{Reliability curve for calibrated XGBoost risk scores}
+\label{fig:xgboost_calibration_reliability}
+\end{figure}
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.82\textwidth]{xgboost_calibration_metric_comparison.png}
+\caption{Calibration metric comparison for XGBoost scores}
+\label{fig:xgboost_calibration_metric_comparison}
+\end{figure}
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.82\textwidth]{xgboost_calibration_score_distribution.png}
+\caption{Score distribution before and after calibration.}
+\label{fig:xgboost_calibration_score_distribution_final}
+\end{figure}
+
+\FloatBarrier
+
+\section{Final SHAP and LIME explainability analysis}
+
+After model selection and calibration, SHAP and LIME were rerun for the final selected model: default neighbor-feature XGBoost with H3 resolution 8, 3-hour windows, inside-Dubai cells only, and the existing sampled-negative training table. The rejected hard-negative sample and the tuned XGBoost configuration were not used. SHAP explains the underlying XGBoost raw-margin score. LIME is used as a local model-agnostic comparison. The sigmoid-calibrated probability is reported as the dashboard-facing risk value, not as a separate explanation method.
+
+\begin{table}[H]
+\centering
+\caption{Top grouped SHAP features for the final XGBoost model}
+\label{tab:final_shap_global_features}
+\small
+\begin{tabular}{lrr}
+\toprule
+\textbf{Feature group} & \textbf{Mean absolute SHAP} & \textbf{Mean SHAP} \\
+\midrule
+Historical cell-hour risk & 2.1737 & -1.7115 \\
+Year & 0.2534 & 0.2534 \\
+Historical cell risk & 0.0988 & -0.0751 \\
+Previous 7-day incident count & 0.0937 & -0.0459 \\
+Neighbor previous 7-day incident count & 0.0660 & -0.0409 \\
+Weekend flag & 0.0494 & 0.0000 \\
+Neighbor previous 24-hour incident count & 0.0369 & -0.0121 \\
+Day of week & 0.0356 & 0.0003 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+The SHAP result confirms that the model is driven mainly by historical risk in the same cell and hour block. Recent activity also matters. The final model now uses neighboring-cell features, and those features appear in the global explanation: neighboring 7-day incident count is the fifth strongest grouped feature, and neighboring 24-hour incident count is seventh. This supports the earlier result that nearby recent activity adds a modest but useful spatial signal.
+
+The sign of SHAP values depends on the specific feature value and model context, so the global table is interpreted mainly by mean absolute SHAP. The strongest feature group, historical cell-hour risk, has the largest average contribution magnitude. The model also uses recent same-cell and neighboring-cell incident counts. This matches the intended design: long-term risk gives the baseline, and recent activity adjusts the score around that baseline.
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.88\textwidth]{shap_feature_importance_bar.png}
+\caption{SHAP feature importance for the final neighbor-feature XGBoost model}
+\label{fig:final_shap_feature_importance}
+\end{figure}
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.88\textwidth]{shap_beeswarm.png}
+\caption{SHAP beeswarm plot for final-model test candidates}
+\label{fig:final_shap_beeswarm}
+\end{figure}
+
+\begin{table}[H]
+\centering
+\caption{Final local explanation cases}
+\label{tab:final_local_explanation_cases}
+\small
+\begin{tabular}{lrrrr}
+\toprule
+\textbf{Case} & \textbf{Actual} & \textbf{Raw score} & \textbf{Calibrated risk} & \textbf{Predicted} \\
+\midrule
+High-risk true positive & 1 & 0.9714 & 0.3505 & 1 \\
+High-risk false positive & 0 & 0.9739 & 0.3707 & 1 \\
+Low-score false negative & 1 & 0.0001 & 0.0000 & 0 \\
+Low-risk true negative & 0 & 0.0001 & 0.0000 & 0 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+The two high-risk examples are driven by high historical cell-hour risk, high previous 7-day incident counts, and recent neighboring-cell activity. The false positive has the same pattern as the true positive, which is useful diagnostically: the model identifies a historically risky local context, but no incident occurs in that particular cell/window. The false negative and true negative both have zero historical cell-hour risk and little recent local or neighboring activity, so the model assigns very low risk.
+
+\begin{table}[H]
+\centering
+\caption{SHAP and LIME agreement on selected local cases}
+\label{tab:final_lime_shap_comparison}
+\footnotesize
+\begin{tabularx}{\textwidth}{L{0.25\textwidth}rY}
+\toprule
+\textbf{Case} & \textbf{Top-5 overlap} & \textbf{Shared explanation pattern} \\
+\midrule
+High-risk true positive & 5 & Historical cell-hour risk and recent incident history raise risk. \\
+High-risk false positive & 4 & Historical cell-hour risk, recent incidents, and neighbor activity raise risk. \\
+Low-score false negative & 4 & Zero historical risk and low recent activity reduce risk. \\
+Low-risk true negative & 4 & Zero historical risk and low recent activity reduce risk. \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+SHAP and LIME broadly agree on the main local drivers. SHAP is retained as the main explanation method because it gives a consistent global ranking and local attributions for the tree model. LIME is kept as supporting evidence because it gives a model-agnostic local check requested during supervisor feedback. Neither method should be interpreted causally; both describe how the trained model uses the available features.
+
+The local examples make the model's behavior more concrete. The high-risk true positive and high-risk false positive both have high historical cell-hour risk and recent incident activity. The model therefore raises the risk score in both cases. The difference is that one window contains an actual incident and the other does not. This is expected in a probabilistic risk task. The low-score false negative shows the opposite failure mode: an incident occurs in a cell/window where the model sees little historical or recent warning.
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.9\textwidth]{lime_shap_local_comparison.png}
+\caption{Final LIME and SHAP local explanation comparison}
+\label{fig:final_lime_shap_comparison}
+\end{figure}
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.82\textwidth]{shap_local_high_risk_tp.png}
+\caption{Local SHAP explanation for the high-risk true-positive case.}
+\label{fig:shap_local_high_risk_tp_final}
+\end{figure}
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.82\textwidth]{shap_local_false_positive.png}
+\caption{Local SHAP explanation for the high-risk false-positive case.}
+\label{fig:shap_local_false_positive_final}
+\end{figure}
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.82\textwidth]{shap_local_false_negative.png}
+\caption{Local SHAP explanation for the low-score false-negative case.}
+\label{fig:shap_local_false_negative_final}
+\end{figure}
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.82\textwidth]{shap_local_true_negative.png}
+\caption{Local SHAP explanation for the low-risk true-negative case.}
+\label{fig:shap_local_true_negative_final}
+\end{figure}
+
+\FloatBarrier
+
+\section{Implication for final model selection}
+
+The neighbor-feature experiment supports the use of short-range spatial history in the final modeling path. The hard-negative experiment does not support changing the training sample in its current 70/30 form, and the tested hyperparameter tuning run does not improve the untouched test result. The final model selection therefore keeps the default neighbor-feature XGBoost trained on the existing sampled-negative table as the current strongest experiment. For dashboard display, the model's raw score should be passed through sigmoid calibration before being shown as a probability-like risk value. SHAP is the main explanation method for the selected model, with LIME used as a supporting local comparison.

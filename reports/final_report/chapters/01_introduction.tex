@@ -1,0 +1,79 @@
+\chapter{Introduction}
+
+Dubai has a dense and heavily used road network that supports commuting, freight movement, tourism, airport access, and everyday city travel. A traffic incident in such a network can affect more than the vehicles directly involved. A crash, vehicle breakdown, obstruction, roadwork report, or stalled vehicle can reduce road capacity, create a local safety risk, and produce congestion that is different from the regular morning or evening peak pattern. These events are commonly treated as non-recurrent incidents because they are irregular disruptions rather than routine demand.
+
+This thesis studies whether historical incident records can be converted into an explainable machine-learning framework for Dubai. The work is deliberately narrower than citywide traffic optimization. It does not attempt to control traffic signals, simulate vehicle flow, or claim live deployment. The aim is to predict which small areas and 3-hour periods are more likely to contain reported incidents, evaluate that prediction under a chronological design, and explain the model's high-risk outputs in a form that a traffic analyst or examiner can inspect.
+
+The project began with the mid-semester pipeline: data audit, Arabic category mapping, coordinate correction, exploratory analysis, H3 grid construction, and initial baseline models. The final report keeps that pipeline and extends it with inside-Dubai full-grid evaluation, historical-risk leakage checks, H3/time-window sensitivity checks, neighboring-cell features, hard-negative and tuning experiments, probability calibration, SHAP/LIME explanations, and a rolling-replay dashboard. The final contribution is therefore an end-to-end research prototype, from raw incident records to model explanation and visual inspection.
+
+\section{Problem statement}
+
+The source dataset provides incident-level records with occurrence time, Arabic incident category, and geographic coordinates. These fields are useful, but they are not a supervised-learning table by themselves. A supervised model needs examples of both incident and non-incident conditions. It also needs a spatial unit, a time unit, features that are available before the prediction window, and an evaluation design that resembles later use.
+
+The problem addressed in this thesis is:
+
+\begin{quote}
+How can Dubai Police incident records be transformed into an explainable grid-time machine-learning framework for predicting non-recurrent traffic incident risk in Dubai?
+\end{quote}
+
+The framework must answer three practical questions:
+
+\begin{enumerate}
+    \item \textbf{Where} are incident-risk zones likely to appear?
+    \item \textbf{When} are those zones likely to be active?
+    \item \textbf{Why} does the trained model assign high risk to a selected zone and time window?
+\end{enumerate}
+
+The word ``risk'' is used in a model-based sense. It means the model's estimated likelihood that at least one incident will be reported in a specific grid cell and time window. It does not mean that the model has identified the physical cause of an incident. The explanation methods used later in the thesis describe how the model uses the available features, not why a crash or breakdown happened in the real world.
+
+\section{Why grid-time prediction is needed}
+
+The raw incident file is a point dataset. Each record describes one reported incident with a time, category, and coordinate. Point records are useful for mapping and counting incidents, but they are not enough for prediction. A model must also see examples where no incident occurred. For that reason, the thesis converts the point records into grid-time rows. Each row represents one H3 cell and one 3-hour window. If at least one incident occurs in the cell during that window, the row is positive. If no incident occurs, the row is negative.
+
+This formulation is important for two reasons. First, it makes the prediction problem explicit and reproducible. Different researchers can rebuild the same H3 cells and time windows from the same cleaned data. Second, it matches the dashboard goal. A traffic analyst does not need a list of every past incident point; the analyst needs to know which zones and time blocks the model ranks as higher risk and why those zones were ranked that way.
+
+\section{Research objectives}
+
+The thesis has six objectives:
+
+\begin{enumerate}
+    \item audit and clean the Dubai Police traffic incident dataset, including Arabic category translation, severity parsing, and coordinate validation;
+    \item define a reproducible H3 grid and 3-hour time-window formulation for Dubai incident-risk prediction;
+    \item construct binary incident-occurrence labels and leakage-safe temporal, historical-risk, same-cell lag, and neighboring-cell features;
+    \item compare baseline and machine-learning models under chronological train, validation, and test splits;
+    \item explain the selected model using SHAP and compare selected local cases with LIME;
+    \item implement a dashboard that presents ranked risk zones, known replay outcomes, and local explanation reasons on an English dashboard map.
+\end{enumerate}
+
+These objectives are ordered to match the actual research workflow. The data audit and grid construction come first because the model depends on them. Model comparison comes after the supervised table is built. Explainability and dashboard work are placed at the end because they must explain the final selected model, not an earlier temporary model.
+
+\section{Research questions}
+
+The work is guided by the following questions:
+
+\begin{enumerate}
+    \item Is the open Dubai Police incident dataset usable for grid-time incident-risk modeling after cleaning, translation, and coordinate correction?
+    \item Does a machine-learning model improve over a historical cell/time risk baseline when evaluated on the full inside-Dubai grid?
+    \item Does nearby H3-cell activity add useful signal beyond same-cell history?
+    \item Are the model outputs stable under sensitivity checks for H3 resolution and time-window size?
+    \item Can SHAP and LIME explain the selected model's high-risk and error cases in a clear way?
+    \item Can the selected model be presented through a dashboard without overstating it as a live traffic-management system?
+\end{enumerate}
+
+\section{Main contribution}
+
+The main contribution is a complete, reproducible pipeline for Dubai grid-time incident-risk prediction. The pipeline starts with raw incident records and ends with an explainable dashboard demonstration. It includes data cleaning, translation mapping, coordinate normalization, H3 grid construction, binary target construction, chronological evaluation, full-grid ranking metrics, feature-ablation checks, H3/time-window sensitivity checks, calibration, and SHAP/LIME explanation.
+
+The final selected model is a default XGBoost classifier using H3 resolution 8, 3-hour windows, inside-Dubai cells, same-cell lag features, historical-risk priors, and ring-1 neighboring-cell lag features. The dashboard presents the model through rolling replay. This means the model is shown on the latest fully observed days in the dataset, using the same recent-lag features that would be available immediately before each 3-hour prediction window.
+
+The thesis also contributes a careful evaluation story. The first sampled-negative models show that the end-to-end supervised-learning pipeline works. The stronger result is the inside-Dubai full-grid evaluation, where every inside-Dubai H3 cell is scored for every validation and test window. This distinction prevents the report from overstating sampled-negative metrics as operational performance.
+
+\section{Scope and limitations}
+
+The thesis uses a frozen historical dataset snapshot ending on 1 June 2026. It does not claim live deployment, adaptive traffic signal control, route guidance, or end-to-end traffic management. Forecasts after the data cutoff require updated incident records because the selected model uses recent 3-hour, 24-hour, 7-day, and neighboring-cell lag features.
+
+The work predicts incident occurrence, not incident duration. Duration prediction would require a reliable clearance or resolution timestamp. The available columns include occurrence time and load timestamp, but load timestamp is metadata and is not used as incident clearance time. Weather, road-speed limits, school calendars, public-event data, and detailed road-network attributes are also outside the final model because they were not needed to complete the core incident-only framework.
+
+The result should be read as a reproducible and interpretable baseline. It shows that open Dubai incident records can support grid-time risk modeling after careful preparation. It does not claim that incidents can be perfectly predicted, that high-risk zones are caused by the top SHAP features, or that the dashboard is ready for operational deployment.
+
+Dubai road-safety work motivates the local problem \cite{aldah2010dubai,abdelfatah2015dubai}. Recent Dubai hotspot analysis also supports the value of Dubai Police incident records for spatial and temporal traffic-safety analysis \cite{alsaleh2026dubaihotspots}. This thesis extends that direction from descriptive hotspot analysis to explainable grid-time prediction.
